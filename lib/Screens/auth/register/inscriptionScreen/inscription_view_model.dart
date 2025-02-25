@@ -36,10 +36,24 @@ class InscriptionViewModel extends ChangeNotifier {
     return "";
   }
 
-  void buttonAction(BuildContext context, GlobalKey<FormState> formKey) {
+  void buttonAction(BuildContext context, GlobalKey<FormState> formKey) async {
     if (formKey.currentState!.validate()) {
-      // This will trigger the form validation and then navigate
-      Navigator.pushNamed(context, AppRoutes.validationDuCompte);
+      print(emailController.text);
+      final response = await _authService.sendOtp(emailController.text);
+
+      print("Response received: $response");
+
+      // Check if the response contains the "message" key instead of "status"
+      if (response.containsKey("error")) {
+        print("Error: ${response["error"]}");
+        // Show error message to user
+      } else if (response["message"] == "OTP sent successfully") {
+        // Navigate if OTP is sent successfully
+        Navigator.pushNamed(context, AppRoutes.validationDuCompte);
+        print("OTP Sent Successfully");
+      } else {
+        print("Failed to send OTP");
+      }
     }
   }
 }

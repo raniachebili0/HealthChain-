@@ -10,6 +10,7 @@ import 'package:health_chain/Screens/auth/register/profile_img_view.dart';
 import 'package:health_chain/models/SharedData.dart';
 import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/services/auth_service.dart';
+import 'package:health_chain/widgets/animated_widget.dart';
 import 'package:provider/provider.dart';
 
 import 'Screens/auth/register/Mot_de_passe.dart';

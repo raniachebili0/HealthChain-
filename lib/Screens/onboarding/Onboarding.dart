@@ -283,21 +283,7 @@ class _OnBoardState extends State<OnBoard> {
                                           builder: (context) =>
                                               InscriptionScreen()));
                                 },
-                                buttonText: 'Patient Account',
-                              ),
-                              SizedBox(
-                                height: 8.h,
-                              ),
-                              MyButton(
-                                buttonFunction: () async {
-                                  await _storeOnboardInfo();
-                                  Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              InscriptionScreen()));
-                                },
-                                buttonText: 'Doctor Account',
+                                buttonText: 'Start',
                               ),
                             ],
                           ),

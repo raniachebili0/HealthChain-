@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:health_chain/Screens/auth/register/inscriptionScreen/inscription_view_model.dart';
 import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/utils/colors.dart';
 import 'package:provider/provider.dart';
@@ -12,6 +13,7 @@ import 'dart:ui';
 
 import '../../../../models/SharedData.dart';
 
+import '../../../services/auth_service.dart';
 import '../../../utils/themes.dart';
 import '../../../widgets/appBar.dart';
 import '../../../widgets/button.dart';
@@ -34,6 +36,7 @@ class _MDPpageState extends State<MDPpage> {
   TextEditingController _telController = TextEditingController();
   TextEditingController _nomController = TextEditingController();
   TextEditingController _dateController = TextEditingController();
+  TextEditingController _doctorIdController = TextEditingController();
 
   String selectedGender = "";
   Color masculinColor = Color.fromRGBO(218, 226, 241, 1.0);
@@ -52,11 +55,11 @@ class _MDPpageState extends State<MDPpage> {
 
   void selectGender(String gender) {
     setState(() {
-      if (gender == "Masculine") {
+      if (gender == "male") {
         selectedGender = gender;
         masculinColor = AppColors.primaryColor;
         femininColor = Color.fromRGBO(218, 226, 241, 1.0);
-      } else if (gender == "Female") {
+      } else if (gender == "female") {
         selectedGender = gender;
         femininColor = AppColors.primaryColor;
         masculinColor = Color.fromRGBO(218, 226, 241, 1.0);
@@ -79,7 +82,7 @@ class _MDPpageState extends State<MDPpage> {
       return "Please enter a password";
     } else if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$')
         .hasMatch(text)) {
-      return "Veuillez saisir un mot de passe valide";
+      return "Please enter a valid phone number password";
     }
     return "";
   }
@@ -91,17 +94,47 @@ class _MDPpageState extends State<MDPpage> {
     return "";
   }
 
+  String getTempAccountValidationDoctorId(String text) {
+    if (text.isNotEmpty && text.length != 13) {
+      return "Please enter a valid Id";
+    }
+    return "";
+  }
+
   // button function
-  void buttonAction() {
+  void buttonAction(String email) async {
     if (_formKey.currentState!.validate()) {
-      final sharedData = Provider.of<SharedData>(context, listen: false);
-      sharedData.MDPdata = _mdpController.text;
-      Navigator.pushNamed(context, AppRoutes.imagePickerScreen);
+      print(_formKey.currentState!.validate());
+      final _authService = Provider.of<AuthService>(context, listen: false);
+      // Retrieve user input values from form fields
+      String gender = selectedGender;
+      String name = _nomController.text;
+      String password = _mdpController.text;
+      String birthDate = _dateController.text; // Or select from date picker
+      String tel = _telController.text;
+      String role =
+          "patient"; // Adjust role as needed (e.g., 'patient', 'doctor')
+
+      // Call signup function
+      String signupResult = await _authService.signup(
+          email, gender, name, password, birthDate, tel, role);
+
+      if (signupResult == "success") {
+        print("Signup successful!");
+        // Navigate to the next screen
+        Navigator.pushReplacementNamed(context, AppRoutes.login);
+      } else {
+        print("Signup failed: $signupResult");
+        // Show error message to user (optional, you can use a snackbar, dialog, etc.)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Signup failed: $signupResult")));
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final inscriptionViewModel = Provider.of<InscriptionViewModel>(context);
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: Colors.white,
@@ -200,6 +233,31 @@ class _MDPpageState extends State<MDPpage> {
                                     ),
                                   ),
                                 ),
+                              ),
+                            ),
+                            Padding(
+                              padding: EdgeInsets.only(bottom: 8.h),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "If you are a doctor add you identifier*",
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                  OutlineBorderTextFormField(
+                                    labelText: "Doctor ID",
+                                    obscureText: false,
+                                    tempTextEditingController:
+                                        _doctorIdController,
+                                    keyboardType: TextInputType.text,
+                                    textInputAction: TextInputAction.next,
+                                    validation: (textToValidate) {
+                                      return getTempAccountValidationDoctorId(
+                                          textToValidate);
+                                    },
+                                    mySuffixIcon: null,
+                                  ),
+                                ],
                               ),
                             ),
                             Padding(
@@ -303,7 +361,7 @@ class _MDPpageState extends State<MDPpage> {
                                     children: <Widget>[
                                       ElevatedButton(
                                         onPressed: () {
-                                          selectGender("Masculine");
+                                          selectGender("male");
                                         },
                                         style: ButtonStyle(
                                           elevation:
@@ -338,7 +396,7 @@ class _MDPpageState extends State<MDPpage> {
                                       SizedBox(width: 20.w),
                                       ElevatedButton(
                                         onPressed: () {
-                                          selectGender("Female");
+                                          selectGender("female");
                                         },
                                         style: ButtonStyle(
                                           elevation:
@@ -385,10 +443,11 @@ class _MDPpageState extends State<MDPpage> {
                               ),
                             ),
                             SizedBox(
-                              height: 50.h,
+                              height: 20.h,
                             ),
                             MyButton(
-                              buttonFunction: buttonAction,
+                              buttonFunction: () => buttonAction(
+                                  inscriptionViewModel.emailController.text),
                               buttonText: 'Continuer',
                             ),
                           ],

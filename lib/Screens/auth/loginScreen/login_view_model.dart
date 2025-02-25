@@ -19,28 +19,22 @@ class LoginViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Login function
-  Future<void> login(BuildContext context, GlobalKey<FormState> formKey) async {
-    if (!formKey.currentState!.validate()) return;
+  void buttonAction(BuildContext context, GlobalKey<FormState> formKey) async {
+    String email = emailController.text;
+    String password = passwordController.text;
+    print(email + password);
+    if (formKey.currentState!.validate()) {
+      print("Form is valid");
 
-    isLoading = true;
-    notifyListeners();
-
-    bool success = await _authService.login(
-      emailController.text,
-      passwordController.text,
-    );
-
-    isLoading = false;
-    notifyListeners();
-
-    if (success) {
-      buttonFunction:
-      () => Navigator.pushNamed(context, AppRoutes.inscription);
+      final loginStatus = await _authService.login(email, password);
+      if (loginStatus == "Login successful") {
+        Navigator.pushReplacementNamed(context, AppRoutes.mainScreen);
+      } else {
+        print("Login failed: $loginStatus");
+        // Handle invalid login attempt, e.g., show a message
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Invalid phone or password")),
-      );
+      print("Form not is valid");
     }
   }
 

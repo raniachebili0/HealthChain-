@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:health_chain/Screens/auth/register/inscriptionScreen/inscription_view_model.dart';
 import 'package:health_chain/routes/app_router.dart';
+import 'package:health_chain/services/auth_service.dart';
 import 'package:provider/provider.dart';
 import '../../../../models/SharedData.dart';
 import '../../../utils/colors.dart';
@@ -34,12 +36,31 @@ class _ValidationDuCompteState extends State<ValidationDuCompte> {
   }
 
   // Button action
-  Future<void> buttonAction() async {
-    Navigator.pushNamed(context, AppRoutes.motDePasse);
+  void buttonAction(String email, String otp) async {
+    final _authService = Provider.of<AuthService>(context, listen: false);
+    try {
+      // Assuming the response is a simple string message
+      final response = await _authService.verifyOtp(email, otp);
+
+      // Log the raw response to help debug
+      print("Raw response from verifyOtp: $response");
+
+      if (response == "OTP Verified") {
+        print("OTP Verified: $response");
+        Navigator.pushNamed(context, AppRoutes.motDePasse);
+      } else {
+        print("Invalid OTP: $response");
+        // Show invalid OTP message
+      }
+    } catch (e) {
+      // Log the error if any issues occur during verification
+      print("Error verifying OTP: $e");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final inscriptionViewModel = Provider.of<InscriptionViewModel>(context);
     final sharedData = Provider.of<SharedData>(context, listen: false);
     String tel = sharedData.telNumData ?? "000000000"; // Prevent null errors
 
@@ -106,7 +127,9 @@ class _ValidationDuCompteState extends State<ValidationDuCompte> {
                         ),
                         SizedBox(height: 270.h),
                         MyButton(
-                            buttonFunction: buttonAction,
+                            buttonFunction: () => buttonAction(
+                                inscriptionViewModel.emailController.text,
+                                verificationCode),
                             buttonText: 'Continue'),
                       ],
                     ),

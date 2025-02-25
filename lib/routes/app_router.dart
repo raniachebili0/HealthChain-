@@ -8,6 +8,12 @@ import 'package:health_chain/Screens/auth/register/inscriptionScreen/inscription
 import 'package:health_chain/Screens/auth/register/profile_img_view.dart';
 import 'package:health_chain/Screens/onboarding/Onboarding.dart';
 
+import '../Screens/core/documents_screen.dart';
+import '../Screens/core/home_screen.dart';
+import '../Screens/core/main_screen.dart';
+import '../Screens/core/notification_screen.dart';
+import '../Screens/core/srveces_screen.dart';
+
 class AppRoutes {
   static const String validationDuCompte = '/validation-du-compte';
   static const String motDePasse = '/mot-de-passe';
@@ -16,6 +22,11 @@ class AppRoutes {
   static const String Onboarding = '/Onboarding';
   static const String filePickerScreen = '/file_picker_view';
   static const String imagePickerScreen = '/profile_img_view';
+  static const String mainScreen = '/main_screen';
+  static const String documentScreen = '/documents_screen';
+  static const String notificationScreen = '/notification_screen';
+  static const String homeScreen = '/home_screen';
+  static const String srvicesScreen = '/srveces_screen';
 
   // Add more route names here
 
@@ -27,6 +38,11 @@ class AppRoutes {
     motDePasse: (context) => const MDPpage(),
     filePickerScreen: (context) => FilePickerScreen(),
     imagePickerScreen: (context) => ImagePickerScreen(),
+    mainScreen: (context) => BottomNavBar(),
+    documentScreen: (context) => DocumentsScreen(),
+    notificationScreen: (context) => NotificationScreen(),
+    homeScreen: (context) => HomeScreen(),
+    srvicesScreen: (context) => ServicesScreen(),
 
     // Add more routes here
   };
