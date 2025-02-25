@@ -14,6 +14,7 @@ import 'package:health_chain/widgets/animated_widget.dart';
 import 'package:provider/provider.dart';
 
 import 'Screens/auth/register/Mot_de_passe.dart';
+import 'Screens/core/main_screen.dart';
 import 'Screens/onboarding/Onboarding.dart';
 
 void main() {
@@ -60,7 +61,7 @@ class MyApp extends StatelessWidget {
           home: child,
         );
       },
-      child: OnBoard(),
+      child: BottomNavBar(),
     );
   }
 }
