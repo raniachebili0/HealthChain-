@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:health_chain/Screens/core/profile_screen.dart';
-import 'package:health_chain/Screens/core/srveces_screen.dart';
+import 'package:health_chain/Screens/core/rdv_screen.dart';
 import 'package:health_chain/utils/colors.dart';
 
 import 'convesations_screen.dart';
@@ -23,7 +23,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
   static List<Widget> PagesAll = <Widget>[
     HomeScreen(),
     DocumentsScreen(),
-    ServicesScreen(),
+    RdvScreen(),
     ConvesationsScreen(),
     ProfileScreen(),
   ];

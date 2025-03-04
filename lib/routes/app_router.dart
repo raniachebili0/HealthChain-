@@ -13,7 +13,7 @@ import '../Screens/core/documents_screen.dart';
 import '../Screens/core/home_screen.dart';
 import '../Screens/core/main_screen.dart';
 import '../Screens/core/notification_screen.dart';
-import '../Screens/core/srveces_screen.dart';
+import '../Screens/core/rdv_screen.dart';
 
 class AppRoutes {
   static const String validationDuCompte = '/validation-du-compte';
@@ -44,7 +44,7 @@ class AppRoutes {
     documentScreen: (context) => DocumentsScreen(),
     notificationScreen: (context) => NotificationScreen(),
     homeScreen: (context) => HomeScreen(),
-    srvicesScreen: (context) => ServicesScreen(),
+    srvicesScreen: (context) => RdvScreen(),
     doctorFormView: (context) => DoctorFormView(),
 
     // Add more routes here

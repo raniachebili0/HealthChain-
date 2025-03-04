@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   final String baseUrl = "http://10.0.2.2:3000/auth";
+  final storage = FlutterSecureStorage();
 
   // Step 1: Send OTP
   Future<Map<String, dynamic>> sendOtp(String email) async {
@@ -126,53 +128,6 @@ class AuthService {
     }
   }
 
-  // Step 3: Signup User
-  // Future<String> signup(String email, String gender, String name,
-  //     String password, String birthDate, String tel,String? filePath, String role) async {
-  //   try {
-  //     // Creating the request body
-  //     final Map<String, String> requestBody = {
-  //       "email": email,
-  //       "gender": gender,
-  //       "name": name,
-  //       "password": password,
-  //       "birthDate": birthDate,
-  //       "telecom": tel,
-  //       "role": role,
-  //     };
-  //
-  //     // Sending the POST request to the signup endpoint
-  //     final response = await http.post(
-  //       Uri.parse("$baseUrl/signup"),
-  //       headers: {"Content-Type": "application/json"},
-  //       body: jsonEncode(requestBody),
-  //     );
-  //
-  //     print("Response received with status code: ${response.statusCode}");
-  //
-  //     // Handling the response
-  //     if (response.statusCode == 200 || response.statusCode == 201) {
-  //       final String responseData = response.body;
-  //
-  //       // Parsing the response message
-  //       final Map<String, dynamic> responseJson = jsonDecode(responseData);
-  //       if (responseJson["message"] == "success") {
-  //         print("Signup Successful: ${responseJson["message"]}");
-  //         return responseJson["message"];
-  //       } else {
-  //         print("Signup Failed: ${responseJson["message"]}");
-  //         return responseJson["message"];
-  //       }
-  //     } else {
-  //       print("Error: Failed to sign up. Status code: ${response.statusCode}");
-  //       return "Error: Failed to sign up";
-  //     }
-  //   } catch (e) {
-  //     print("Error during signup: $e");
-  //     return "Error during signup: $e";
-  //   }
-  // }
-
   // Step 4: Login User
   Future<String> login(String email, String password) async {
     try {
@@ -195,7 +150,7 @@ class AuthService {
         String userId = responseData["userId"];
         String role = responseData["role"];
 
-        // Save tokens, userId, and role in secure storage or app state for future use
+        await storage.write(key: "auth_token", value: accessToken);
         print("Login successful, access token: $accessToken");
 
         return "Login successful";
@@ -212,7 +167,7 @@ class AuthService {
 
   // Logout
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('accessToken');
+    //String? token = await storage.read(key: "auth_token");
+    await storage.delete(key: "auth_token");
   }
 }

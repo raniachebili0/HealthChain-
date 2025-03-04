@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:health_chain/utils/colors.dart';
@@ -6,7 +5,7 @@ import 'package:health_chain/utils/colors.dart';
 import '../models/doctor_model.dart';
 
 class DoctorCard extends StatelessWidget {
-  final Doctor doctor;
+  final Map<String, dynamic> doctor;
 
   const DoctorCard({super.key, required this.doctor});
 
@@ -34,65 +33,66 @@ class DoctorCard extends StatelessWidget {
             borderRadius: const BorderRadius.all(
               Radius.circular(30),
             ),
-            child: Image.asset(
-              doctor.imageUrl,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
+            child: doctor['photo'] != null && doctor['photo'].startsWith("http")
+                ? Image.network(
+                    doctor['photo'],
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Icon(
+                      Icons.person,
+                      size: 50,
+                      color: Colors.grey.shade400,
+                    ),
+                  )
+                : Image.asset(
+                    'assets/imeges/Landing.png',
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
           ),
 
           // Doctor Info
-          Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Opacity(
-                opacity: 0.5,
-                child: Container(
-                  height: 60.h,
-                  decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.all(
-                      Radius.circular(30),
-                    ),
-                    color: AppColors.secondaryColor2,
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Opacity(
+              opacity: 0.6,
+              child: Container(
+                height: 60.h,
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  color: AppColors.secondaryColor2,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
           Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.only(left: 10.0, bottom: 20),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Text(
-                  doctor.name,
+                  doctor['name'] ?? "Unknown Doctor",
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  doctor.specialty,
-                  style: TextStyle(
+                  doctor['specialty'] ?? "Unknown Specialty",
+                  style: const TextStyle(
                     fontSize: 14,
+                    color: Colors.white70,
                   ),
                 ),
-                const SizedBox(height: 10),
-
-                // View Profile Button
-                // ElevatedButton(
-                //   onPressed: () {},
-                //   style: ElevatedButton.styleFrom(
-                //     backgroundColor: AppColors.secondaryColor2,
-                //     shape: RoundedRectangleBorder(
-                //       borderRadius: BorderRadius.circular(12),
-                //     ),
-                //   ),
-                //   child: const Text("View Profile",
-                //       style: TextStyle(color: Colors.white)),
-                // ),
               ],
             ),
           ),

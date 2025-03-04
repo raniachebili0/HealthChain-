@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:health_chain/services/doctor_service.dart';
 import 'package:health_chain/widgets/doctor_item.dart';
 
 import '../../models/doctor_model.dart';
@@ -13,29 +14,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final List<Doctor> doctors = [
-    Doctor(
-      name: "Dr. Alex Johnson",
-      specialty: "Psychologist",
-      distance: "800m away",
-      imageUrl: "assets/imeges/Landing.png", // Replace with real images
-    ),
-    Doctor(
-      name: "Dr. Sophia Carter",
-      specialty: "Psychologist",
-      distance: "500m away",
-      imageUrl: "assets/doctor2.png",
-    ),
-    Doctor(
-      name: "Dr. Emily Brown",
-      specialty: "Psychologist",
-      distance: "1.2km away",
-      imageUrl: "assets/doctor3.png",
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final DoctorService doctorService = DoctorService();
     return Scaffold(
         body: Container(
             child: SafeArea(
@@ -150,13 +131,27 @@ class _HomeScreenState extends State<HomeScreen> {
             height: 210.h,
             child: Padding(
               padding: const EdgeInsets.only(top: 16, bottom: 16, left: 16),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: doctors
-                      .map((doctor) => DoctorCard(doctor: doctor))
-                      .toList(),
-                ),
+              child: FutureBuilder<List<Map<String, dynamic>>>(
+                future: doctorService.getAllDoctors(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text("Error: ${snapshot.error}"));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Center(child: Text("No doctors found"));
+                  } else {
+                    final doctors = snapshot.data!;
+                    return ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: doctors.length,
+                      itemBuilder: (context, index) {
+                        final doctor = doctors[index];
+                        return DoctorCard(doctor: doctor);
+                      },
+                    );
+                  }
+                },
               ),
             ),
           )
