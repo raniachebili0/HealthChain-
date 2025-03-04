@@ -87,7 +87,7 @@ class DoctorCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  doctor['specialty'] ?? "Unknown Specialty",
+                  doctor['specialization'] ?? "Unknown Specialty",
                   style: const TextStyle(
                     fontSize: 14,
                     color: Colors.white70,

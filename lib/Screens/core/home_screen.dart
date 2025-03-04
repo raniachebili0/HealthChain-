@@ -1,7 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:health_chain/services/doctor_service.dart';
+import 'package:health_chain/services/user_service.dart';
+import 'package:health_chain/utils/colors.dart';
 import 'package:health_chain/widgets/doctor_item.dart';
 
 import '../../models/doctor_model.dart';
@@ -16,7 +17,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
-    final DoctorService doctorService = DoctorService();
+    final UserService userService = UserService();
     return Scaffold(
         body: Container(
             child: SafeArea(
@@ -127,12 +128,38 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Text(
+                  'Popular Doctors',
+                  textAlign: TextAlign.start,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 19,
+                    color: AppColors.secondaryColor2,
+                  ),
+                ),
+                Spacer(),
+                Text(
+                  'See All',
+                  textAlign: TextAlign.end,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 16,
+                    color: AppColors.primaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
           Container(
             height: 210.h,
             child: Padding(
               padding: const EdgeInsets.only(top: 16, bottom: 16, left: 16),
               child: FutureBuilder<List<Map<String, dynamic>>>(
-                future: doctorService.getAllDoctors(),
+                future: userService.getAllDoctors(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return Center(child: CircularProgressIndicator());
@@ -144,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     final doctors = snapshot.data!;
                     return ListView.builder(
                       scrollDirection: Axis.horizontal,
-                      itemCount: doctors.length,
+                      itemCount: doctors.length < 6 ? doctors.length : 6,
                       itemBuilder: (context, index) {
                         final doctor = doctors[index];
                         return DoctorCard(doctor: doctor);
@@ -154,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
             ),
-          )
+          ),
         ],
       ),
     ))));
