@@ -1,12 +1,18 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:health_chain/Screens/auth/register/signupForm/doctor_form_view_model.dart';
+import 'package:health_chain/Screens/auth/register/signupForm/user_form_view_model.dart';
 import 'package:health_chain/routes/app_router.dart';
+import 'package:health_chain/services/auth_service.dart';
 import 'package:health_chain/utils/colors.dart';
 import 'package:health_chain/utils/themes.dart';
 import 'package:health_chain/widgets/appBar.dart';
 import 'package:health_chain/widgets/button.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+
+import 'inscriptionScreen/inscription_view_model.dart';
 
 class ImagePickerScreen extends StatefulWidget {
   @override
@@ -14,7 +20,7 @@ class ImagePickerScreen extends StatefulWidget {
 }
 
 class _ImagePickerScreenState extends State<ImagePickerScreen> {
-  File? _selectedImage;
+  File? selectedImage;
 
   Future<void> _pickImage() async {
     final pickedFile =
@@ -22,13 +28,61 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
 
     if (pickedFile != null) {
       setState(() {
-        _selectedImage = File(pickedFile.path);
+        selectedImage = File(pickedFile.path);
       });
+    }
+  }
+
+  void buttonAction(BuildContext context, email, gender, nom, mdp, date, tel,
+      Image, doctorid, doctorspclt) async {
+    final _authService = Provider.of<AuthService>(context, listen: false);
+    String userRole = "";
+    if (doctorid == null || doctorid.isEmpty) {
+      userRole = "patient";
+    } else {
+      userRole = "practitioner";
+    }
+
+    // Call signup function
+    String signupResult = await _authService.signup(
+        email: email,
+        name: nom,
+        tel: tel,
+        password: mdp,
+        role: userRole,
+        birthDate: date,
+        gender: gender,
+        filePath: Image,
+        doctorId: doctorid,
+        doctorspecility: doctorspclt);
+
+    if (signupResult == "success") {
+      print("Signup successful!");
+      // Navigate to the next screen
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
+    } else {
+      print("Signup failed: $signupResult");
+      // Show error message to user (optional, you can use a snackbar, dialog, etc.)
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Signup failed: $signupResult")));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final inscriptionViewModel = Provider.of<InscriptionViewModel>(context);
+    final userFormViewModel = Provider.of<UserFormViewModel>(context);
+    final doctorFormViewModel = Provider.of<DoctorFormViewModel>(context);
+    String email = inscriptionViewModel.emailController.text;
+    String Gender = userFormViewModel.selectedGender;
+    String Name = userFormViewModel.nomController.text;
+    String Password = userFormViewModel.mdpController.text;
+    String BirthDate =
+        userFormViewModel.date.toString(); // Or select from date picker
+    String Tel = userFormViewModel.telController.text;
+    File? image = selectedImage;
+    String id = doctorFormViewModel.doctorIdController.text;
+    String speciality = doctorFormViewModel.doctorspecialiteController.text;
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
@@ -61,16 +115,12 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                       children: [
                         SizedBox(
                           height: 300.h,
-                          child: _selectedImage != null
-                              ? Stack(
-                                  children: [
-                                    Image.file(
-                                      _selectedImage!,
-                                      height: 300, // Adjust size as needed
-                                      width: double.infinity,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ],
+                          child: selectedImage != null
+                              ? Image.file(
+                                  selectedImage!,
+                                  height: 300, // Adjust size as needed
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
                                 )
                               : Container(
                                   decoration: BoxDecoration(
@@ -101,8 +151,17 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                         ),
                         SizedBox(height: 80.h),
                         MyButton(
-                            buttonFunction: () => Navigator.pushNamed(
-                                context, AppRoutes.filePickerScreen),
+                            buttonFunction: () => buttonAction(
+                                context,
+                                email,
+                                Gender,
+                                Name,
+                                Password,
+                                BirthDate,
+                                Tel,
+                                image,
+                                id,
+                                speciality),
                             buttonText: 'Continue'),
                       ],
                     ),

@@ -1,13 +1,14 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:health_chain/Screens/auth/loginScreen/login_view.dart';
-import 'package:health_chain/Screens/auth/register/Mot_de_passe.dart';
 import 'package:health_chain/Screens/auth/register/Validation_du_compte.dart';
-import 'package:health_chain/Screens/auth/register/file_picker_view.dart';
+import 'package:health_chain/Screens/core/file_picker_view.dart';
 import 'package:health_chain/Screens/auth/register/inscriptionScreen/inscription_view.dart';
 import 'package:health_chain/Screens/auth/register/profile_img_view.dart';
 import 'package:health_chain/Screens/onboarding/Onboarding.dart';
 
+import '../Screens/auth/register/signupForm/user_form_view.dart';
+import '../Screens/auth/register/signupForm/doctor_form_view.dart';
 import '../Screens/core/documents_screen.dart';
 import '../Screens/core/home_screen.dart';
 import '../Screens/core/main_screen.dart';
@@ -16,7 +17,7 @@ import '../Screens/core/srveces_screen.dart';
 
 class AppRoutes {
   static const String validationDuCompte = '/validation-du-compte';
-  static const String motDePasse = '/mot-de-passe';
+  static const String userFormView = '/user_form_view';
   static const String login = '/login_view';
   static const String inscription = '/inscription_view';
   static const String Onboarding = '/Onboarding';
@@ -27,6 +28,7 @@ class AppRoutes {
   static const String notificationScreen = '/notification_screen';
   static const String homeScreen = '/home_screen';
   static const String srvicesScreen = '/srveces_screen';
+  static const String doctorFormView = '/doctor_form_view';
 
   // Add more route names here
 
@@ -35,7 +37,7 @@ class AppRoutes {
     login: (context) => LoginScreen(),
     inscription: (context) => InscriptionScreen(),
     validationDuCompte: (context) => const ValidationDuCompte(),
-    motDePasse: (context) => const MDPpage(),
+    userFormView: (context) => const UserFormView(),
     filePickerScreen: (context) => FilePickerScreen(),
     imagePickerScreen: (context) => ImagePickerScreen(),
     mainScreen: (context) => BottomNavBar(),
@@ -43,6 +45,7 @@ class AppRoutes {
     notificationScreen: (context) => NotificationScreen(),
     homeScreen: (context) => HomeScreen(),
     srvicesScreen: (context) => ServicesScreen(),
+    doctorFormView: (context) => DoctorFormView(),
 
     // Add more routes here
   };

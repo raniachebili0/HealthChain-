@@ -2,18 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:health_chain/Screens/auth/loginScreen/login_view.dart';
 import 'package:health_chain/Screens/auth/register/Validation_du_compte.dart';
-import 'package:health_chain/Screens/auth/register/file_picker_view.dart';
+import 'package:health_chain/Screens/auth/register/signupForm/doctor_form_view_model.dart';
+import 'package:health_chain/Screens/core/file_picker_view.dart';
 import 'package:health_chain/Screens/auth/register/inscriptionScreen/inscription_view.dart';
 import 'package:health_chain/Screens/auth/loginScreen/login_view_model.dart';
 import 'package:health_chain/Screens/auth/register/inscriptionScreen/inscription_view_model.dart';
 import 'package:health_chain/Screens/auth/register/profile_img_view.dart';
+import 'package:health_chain/Screens/auth/register/signupForm/user_form_view.dart';
+import 'package:health_chain/Screens/core/home_screen.dart';
 import 'package:health_chain/models/SharedData.dart';
 import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/services/auth_service.dart';
 import 'package:health_chain/widgets/animated_widget.dart';
 import 'package:provider/provider.dart';
 
-import 'Screens/auth/register/Mot_de_passe.dart';
+import 'Screens/auth/register/signupForm/user_form_view_model.dart';
 import 'Screens/core/main_screen.dart';
 import 'Screens/onboarding/Onboarding.dart';
 
@@ -29,6 +32,12 @@ void main() {
         ChangeNotifierProvider<InscriptionViewModel>(
           create: (context) =>
               InscriptionViewModel(context.read<AuthService>()),
+        ),
+        ChangeNotifierProvider<UserFormViewModel>(
+          create: (_) => UserFormViewModel(),
+        ),
+        ChangeNotifierProvider<DoctorFormViewModel>(
+          create: (_) => DoctorFormViewModel(),
         ),
       ],
       child: MyApp(),

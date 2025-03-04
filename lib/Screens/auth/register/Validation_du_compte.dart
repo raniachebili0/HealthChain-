@@ -11,7 +11,6 @@ import '../../../utils/colors.dart';
 import '../../../utils/themes.dart';
 import '../../../widgets/appBar.dart';
 import '../../../widgets/errorAlert.dart';
-import 'Mot_de_passe.dart';
 import '../../../widgets/button.dart';
 import 'package:http/http.dart' as http;
 
@@ -47,7 +46,7 @@ class _ValidationDuCompteState extends State<ValidationDuCompte> {
 
       if (response == "OTP Verified") {
         print("OTP Verified: $response");
-        Navigator.pushNamed(context, AppRoutes.motDePasse);
+        Navigator.pushNamed(context, AppRoutes.userFormView);
       } else {
         print("Invalid OTP: $response");
         // Show invalid OTP message

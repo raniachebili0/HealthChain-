@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -62,12 +64,20 @@ class AuthService {
     }
   }
 
-  // Step 3: Signup User
-  Future<String> signup(String email, String gender, String name,
-      String password, String birthDate, String tel, String role) async {
+  Future<String> signup(
+      {required String email,
+      required String name,
+      required String password,
+      String? birthDate,
+      String? gender,
+      required String tel,
+      required String role,
+      File? filePath,
+      String? doctorId,
+      String? doctorspecility}) async {
     try {
-      // Creating the request body
-      final Map<String, String> requestBody = {
+      // ✅ Construire l'objet JSON pour `signupData`
+      final Map<String, dynamic> signupData = {
         "email": email,
         "gender": gender,
         "name": name,
@@ -75,39 +85,93 @@ class AuthService {
         "birthDate": birthDate,
         "telecom": tel,
         "role": role,
+        "specialization": doctorspecility,
+        "licenseNumber": doctorId
       };
 
-      // Sending the POST request to the signup endpoint
-      final response = await http.post(
-        Uri.parse("$baseUrl/signup"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(requestBody),
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('http://10.0.2.2:3000/auth/signup'), // Adjust for emulator
       );
 
-      print("Response received with status code: ${response.statusCode}");
+      // ✅ Ajouter les données JSON comme champ de formulaire
+      request.fields['signupData'] = jsonEncode(signupData);
 
-      // Handling the response
+      // ✅ Ajouter le fichier s'il existe
+      if (filePath != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'file',
+            filePath.path,
+            filename: "profile.jpg",
+          ),
+        );
+      }
+
+      // ✅ Envoyer la requête
+      var response = await request.send();
+      var responseBody = await response.stream.bytesToString();
+
+      print("✅ Response: $responseBody");
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final String responseData = response.body;
-
-        // Parsing the response message
-        final Map<String, dynamic> responseJson = jsonDecode(responseData);
-        if (responseJson["message"] == "success") {
-          print("Signup Successful: ${responseJson["message"]}");
-          return responseJson["message"];
-        } else {
-          print("Signup Failed: ${responseJson["message"]}");
-          return responseJson["message"];
-        }
+        var decodedResponse = jsonDecode(responseBody);
+        return decodedResponse["message"] ?? "Signup successful";
       } else {
-        print("Error: Failed to sign up. Status code: ${response.statusCode}");
-        return "Error: Failed to sign up";
+        return "Signup failed: ${response.reasonPhrase}";
       }
     } catch (e) {
-      print("Error during signup: $e");
+      print("❌ Error during signup: $e");
       return "Error during signup: $e";
     }
   }
+
+  // Step 3: Signup User
+  // Future<String> signup(String email, String gender, String name,
+  //     String password, String birthDate, String tel,String? filePath, String role) async {
+  //   try {
+  //     // Creating the request body
+  //     final Map<String, String> requestBody = {
+  //       "email": email,
+  //       "gender": gender,
+  //       "name": name,
+  //       "password": password,
+  //       "birthDate": birthDate,
+  //       "telecom": tel,
+  //       "role": role,
+  //     };
+  //
+  //     // Sending the POST request to the signup endpoint
+  //     final response = await http.post(
+  //       Uri.parse("$baseUrl/signup"),
+  //       headers: {"Content-Type": "application/json"},
+  //       body: jsonEncode(requestBody),
+  //     );
+  //
+  //     print("Response received with status code: ${response.statusCode}");
+  //
+  //     // Handling the response
+  //     if (response.statusCode == 200 || response.statusCode == 201) {
+  //       final String responseData = response.body;
+  //
+  //       // Parsing the response message
+  //       final Map<String, dynamic> responseJson = jsonDecode(responseData);
+  //       if (responseJson["message"] == "success") {
+  //         print("Signup Successful: ${responseJson["message"]}");
+  //         return responseJson["message"];
+  //       } else {
+  //         print("Signup Failed: ${responseJson["message"]}");
+  //         return responseJson["message"];
+  //       }
+  //     } else {
+  //       print("Error: Failed to sign up. Status code: ${response.statusCode}");
+  //       return "Error: Failed to sign up";
+  //     }
+  //   } catch (e) {
+  //     print("Error during signup: $e");
+  //     return "Error during signup: $e";
+  //   }
+  // }
 
   // Step 4: Login User
   Future<String> login(String email, String password) async {
