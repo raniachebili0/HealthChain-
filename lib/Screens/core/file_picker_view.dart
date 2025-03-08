@@ -45,7 +45,7 @@ class _FilePickerScreenState extends State<FilePickerScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const CustomAppBar(appbartext: 'Sign Up'),
+            const CustomAppBar(appbartext: 'Uploud file'),
             Padding(
               padding: EdgeInsets.fromLTRB(17.w, 0.h, 17.w, 20.h),
               child: Column(
@@ -54,14 +54,14 @@ class _FilePickerScreenState extends State<FilePickerScreen> {
                   Padding(
                     padding: EdgeInsets.only(bottom: 13.h),
                     child: Text(
-                      'Hi doctor ,Verify your identity',
+                      'Hi patient ,Add your document',
                       style: CustomTextStyle.titleStyle,
                     ),
                   ),
                   Padding(
                     padding: EdgeInsets.only(bottom: 28.h),
                     child: Text(
-                      'Please submit a document that verifies your position',
+                      "Securely upload and manage your medical records for easy access anytime.",
                       style: CustomTextStyle.h2,
                     ),
                   ),
@@ -105,7 +105,7 @@ class _FilePickerScreenState extends State<FilePickerScreen> {
                             buttonFunction: () => null,
                             //Navigator.pushNamed(
                             //     context, AppRoutes.validationDuCompte),
-                            buttonText: 'Sign Up'),
+                            buttonText: 'Upload'),
                       ],
                     ),
                   ),

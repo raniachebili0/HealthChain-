@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:health_chain/routes/app_router.dart';
 
 import '../../../services/auth_service.dart';
@@ -19,6 +20,8 @@ class LoginViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  final storage = FlutterSecureStorage();
+
   void buttonAction(BuildContext context, GlobalKey<FormState> formKey) async {
     String email = emailController.text;
     String password = passwordController.text;
@@ -28,7 +31,13 @@ class LoginViewModel extends ChangeNotifier {
 
       final loginStatus = await _authService.login(email, password);
       if (loginStatus == "Login successful") {
-        Navigator.pushReplacementNamed(context, AppRoutes.mainScreen);
+        String? role = await storage.read(key: "user_role");
+        print("ddddddddddddddddddd      ${role}");
+        if (role == "practitioner") {
+          Navigator.pushReplacementNamed(context, AppRoutes.doctormainScreen);
+        } else {
+          Navigator.pushReplacementNamed(context, AppRoutes.mainScreen);
+        }
       } else {
         print("Login failed: $loginStatus");
         // Handle invalid login attempt, e.g., show a message

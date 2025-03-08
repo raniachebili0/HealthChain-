@@ -49,7 +49,7 @@ class InscriptionViewModel extends ChangeNotifier {
         // Show error message to user
       } else if (response["message"] == "OTP sent successfully") {
         // Navigate if OTP is sent successfully
-        Navigator.pushNamed(context, AppRoutes.validationDuCompte);
+        Navigator.pushReplacementNamed(context, AppRoutes.validationDuCompte);
         print("OTP Sent Successfully");
       } else {
         print("Failed to send OTP");

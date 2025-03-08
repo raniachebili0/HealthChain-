@@ -1,9 +1,12 @@
 import 'dart:convert';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:health_chain/services/UserRole.dart';
 import 'package:http/http.dart' as http;
 
 class UserService {
   final String baseUrl = "http://10.0.2.2:3000/users";
+  final storage = FlutterSecureStorage();
 
   Future<List<Map<String, dynamic>>> getAllDoctors() async {
     try {
@@ -29,7 +32,19 @@ class UserService {
 
   Future<Map<String, dynamic>> getuserbyid() async {
     try {
-      final response = await http.get(Uri.parse("$baseUrl/getbyId"));
+      String? token = await storage.read(key: "auth_token");
+      if (token == null) {
+        print("No auth token found");
+        return {"error": "No authentication token found"};
+      }
+
+      final response = await http.get(
+        Uri.parse("$baseUrl/getbyId"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json", // Ensure proper JSON handling
+        },
+      );
 
       print("Response received with status code: ${response.statusCode}");
 

@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:health_chain/Screens/core/docter_detailles_screnn.dart';
+import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/services/user_service.dart';
 import 'package:health_chain/utils/colors.dart';
 import 'package:health_chain/widgets/doctor_item.dart';
@@ -26,26 +28,6 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              controller: null,
-              decoration: InputDecoration(
-                hintText: 'Search...',
-                hintStyle: TextStyle(color: Color(0xFF949393)),
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                filled: true,
-                fillColor: Color(0xFFCBE0F3),
-              ),
-              onChanged: (value) {
-                // Handle search text changes
-              },
-            ),
-          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
@@ -142,13 +124,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 Spacer(),
-                Text(
-                  'See All',
-                  textAlign: TextAlign.end,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 16,
-                    color: AppColors.primaryColor,
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pushNamed(context, AppRoutes.doctorsListScreen);
+                  },
+                  child: Text(
+                    'See All',
+                    textAlign: TextAlign.end,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 16,
+                      color: AppColors.primaryColor,
+                    ),
                   ),
                 ),
               ],
@@ -174,7 +161,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       itemCount: doctors.length < 6 ? doctors.length : 6,
                       itemBuilder: (context, index) {
                         final doctor = doctors[index];
-                        return DoctorCard(doctor: doctor);
+                        return DoctorCard(
+                          doctor: doctor,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    DoctorDetailsScreen(doctor: doctor),
+                              ),
+                            );
+                          },
+                        );
                       },
                     );
                   }
@@ -182,8 +180,138 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Upcoming Appointments',
+                      textAlign: TextAlign.start,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 19,
+                        color: AppColors.secondaryColor2,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(
+                  height: 10,
+                ),
+                AppointmentCard(
+                  day: "Tue",
+                  date: "12",
+                  time: "09:30 AM",
+                  doctorName: "Dr. Mim Ankht",
+                  specialty: "Depression",
+                ),
+                SizedBox(
+                  height: 10,
+                ),
+                AppointmentCard(
+                  day: "Tue",
+                  date: "16",
+                  time: "09:30 AM",
+                  doctorName: "Dr. Mim Ankht",
+                  specialty: "Depression",
+                ),
+                SizedBox(
+                  height: 10,
+                ),
+                AppointmentCard(
+                  day: "Tue",
+                  date: "12",
+                  time: "09:30 AM",
+                  doctorName: "Dr. Mim Ankht",
+                  specialty: "Depression",
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     ))));
+  }
+}
+
+class AppointmentCard extends StatelessWidget {
+  final String day;
+  final String date;
+  final String time;
+  final String doctorName;
+  final String specialty;
+
+  const AppointmentCard({
+    Key? key,
+    required this.day,
+    required this.date,
+    required this.time,
+    required this.doctorName,
+    required this.specialty,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade200,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.primaryColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  date,
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  day,
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  time,
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  doctorName,
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  specialty,
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.more_vert, color: Colors.white),
+        ],
+      ),
+    );
   }
 }

@@ -82,7 +82,7 @@ class _OutlineBorderTextFormField extends State<OutlineBorderTextFormField> {
             style: getTextFieldStyle(),
             keyboardType: widget.keyboardType,
             textInputAction: widget.textInputAction,
-            inputFormatters: [LengthLimitingTextInputFormatter(20)],
+            inputFormatters: [LengthLimitingTextInputFormatter(50)],
             validator: (string) {
               if (widget
                   .validation(widget.tempTextEditingController.text)

@@ -151,6 +151,7 @@ class AuthService {
         String role = responseData["role"];
 
         await storage.write(key: "auth_token", value: accessToken);
+        await storage.write(key: "user_role", value: role);
         print("Login successful, access token: $accessToken");
 
         return "Login successful";

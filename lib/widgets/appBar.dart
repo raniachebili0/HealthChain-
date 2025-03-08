@@ -17,9 +17,8 @@ class _CustomAppBarState extends State<CustomAppBar> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.fromLTRB(0.h, 0.h, 0.h, 19.09.h),
       width: double.infinity,
-      height: 77.91.h,
+      height: 60.h,
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
@@ -31,45 +30,17 @@ class _CustomAppBarState extends State<CustomAppBar> {
         ],
       ),
       child: Container(
-        //padding: EdgeInsets.fromLTRB(19.h, 29.h, 154.h, 27.91.h),
+        padding: EdgeInsets.only(left: 19),
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(
           color: Color(0xffffffff),
         ),
-        child: Center(
-          child: Stack(
-            children: [
-              InkWell(
-                onTap: () {
-                  Navigator.pop(context);
-                },
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      margin: EdgeInsets.fromLTRB(19.w, 0.h, 0.w, 0.h),
-                      width: 20.w,
-                      height: 20.h,
-                      child: Image.asset(
-                        'assets/icons/back.png',
-                        width: 20.w,
-                        height: 20.h,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                // Wrap the Text widget with Expanded
-                child: Center(
-                  child: Text(
-                    widget.appbartext,
-                    style: CustomTextStyle.titleStyle,
-                  ),
-                ),
-              ),
-            ],
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            widget.appbartext,
+            style: CustomTextStyle.titleStyle,
           ),
         ),
       ),

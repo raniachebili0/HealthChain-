@@ -46,7 +46,7 @@ class _ValidationDuCompteState extends State<ValidationDuCompte> {
 
       if (response == "OTP Verified") {
         print("OTP Verified: $response");
-        Navigator.pushNamed(context, AppRoutes.userFormView);
+        Navigator.pushReplacementNamed(context, AppRoutes.userFormView);
       } else {
         print("Invalid OTP: $response");
         // Show invalid OTP message
