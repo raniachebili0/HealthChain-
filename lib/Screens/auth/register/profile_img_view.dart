@@ -15,6 +15,8 @@ import 'package:provider/provider.dart';
 import 'inscriptionScreen/inscription_view_model.dart';
 
 class ImagePickerScreen extends StatefulWidget {
+  const ImagePickerScreen({super.key});
+
   @override
   _ImagePickerScreenState createState() => _ImagePickerScreenState();
 }
@@ -35,7 +37,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
 
   void buttonAction(BuildContext context, email, gender, nom, mdp, date, tel,
       Image, doctorid, doctorspclt) async {
-    final _authService = Provider.of<AuthService>(context, listen: false);
+    final authService = Provider.of<AuthService>(context, listen: false);
     String userRole = "";
     if (doctorid == null || doctorid.isEmpty) {
       userRole = "patient";
@@ -44,7 +46,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     }
 
     // Call signup function
-    String signupResult = await _authService.signup(
+    String signupResult = await authService.signup(
         email: email,
         name: nom,
         tel: tel,

@@ -7,8 +7,7 @@ import '../utils/colors.dart';
 class ErrorAlert extends StatefulWidget {
   final String errorText;
 
-  const ErrorAlert({Key? key, required this.errorText, required String message})
-      : super(key: key);
+  const ErrorAlert({super.key, required this.errorText, required String message});
 
   @override
   State<ErrorAlert> createState() => _ErrorAlertState();

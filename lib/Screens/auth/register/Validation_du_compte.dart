@@ -15,7 +15,7 @@ import '../../../widgets/button.dart';
 import 'package:http/http.dart' as http;
 
 class ValidationDuCompte extends StatefulWidget {
-  const ValidationDuCompte({Key? key}) : super(key: key);
+  const ValidationDuCompte({super.key});
 
   @override
   State<ValidationDuCompte> createState() => _ValidationDuCompteState();
@@ -36,10 +36,10 @@ class _ValidationDuCompteState extends State<ValidationDuCompte> {
 
   // Button action
   void buttonAction(String email, String otp) async {
-    final _authService = Provider.of<AuthService>(context, listen: false);
+    final authService = Provider.of<AuthService>(context, listen: false);
     try {
       // Assuming the response is a simple string message
-      final response = await _authService.verifyOtp(email, otp);
+      final response = await authService.verifyOtp(email, otp);
 
       // Log the raw response to help debug
       print("Raw response from verifyOtp: $response");

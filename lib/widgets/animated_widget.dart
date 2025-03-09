@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 
 class RandomMovingWidget extends StatefulWidget {
+  const RandomMovingWidget({super.key});
+
   @override
   _RandomMovingWidgetState createState() => _RandomMovingWidgetState();
 }
@@ -118,7 +120,7 @@ class _AnimatedRandomWidgetScreenState extends State<AnimatedRandomWidgetScreen>
     final double newY = _random.nextDouble() * 2 - 1;
 
     _animation = Tween<Offset>(
-      begin: _animation?.value ?? Offset.zero,
+      begin: _animation.value ?? Offset.zero,
       end: Offset(newX, newY),
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 

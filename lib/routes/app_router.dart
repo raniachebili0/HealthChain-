@@ -1,4 +1,3 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:health_chain/Screens/auth/loginScreen/login_view.dart';
 import 'package:health_chain/Screens/auth/register/Validation_du_compte.dart';
@@ -27,7 +26,7 @@ class AppRoutes {
   static const String documentScreen = '/documents_screen';
   static const String notificationScreen = '/notification_screen';
   static const String homeScreen = '/home_screen';
-  static const String srvicesScreen = '/srveces_screen';
+  static const String rdvScreen = '/rdv_screen';
   static const String doctorFormView = '/doctor_form_view';
 
   // Add more route names here
@@ -44,7 +43,7 @@ class AppRoutes {
     documentScreen: (context) => DocumentsScreen(),
     notificationScreen: (context) => NotificationScreen(),
     homeScreen: (context) => HomeScreen(),
-    srvicesScreen: (context) => RdvScreen(),
+    rdvScreen: (context) => RdvScreen(),
     doctorFormView: (context) => DoctorFormView(),
 
     // Add more routes here

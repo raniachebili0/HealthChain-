@@ -6,7 +6,7 @@ import '../../../../utils/colors.dart';
 
 class UserFormViewModel extends ChangeNotifier {
   bool isPassVisible = true;
-  FocusNode myFocusNode = new FocusNode();
+  FocusNode myFocusNode = FocusNode();
   TextEditingController mdpController = TextEditingController();
   TextEditingController telController = TextEditingController();
   TextEditingController nomController = TextEditingController();

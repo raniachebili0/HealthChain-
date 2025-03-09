@@ -13,6 +13,8 @@ import 'package:open_filex/open_filex.dart';
 import 'package:pdfx/pdfx.dart';
 
 class FilePickerScreen extends StatefulWidget {
+  const FilePickerScreen({super.key});
+
   @override
   _FilePickerScreenState createState() => _FilePickerScreenState();
 }

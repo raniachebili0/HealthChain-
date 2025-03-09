@@ -8,7 +8,7 @@ import 'package:health_chain/utils/colors.dart';
 import 'convesations_screen.dart';
 import 'home_screen.dart';
 import 'documents_screen.dart';
-import 'notification_screen.dart';
+
 
 class BottomNavBar extends StatefulWidget {
   const BottomNavBar({super.key});
@@ -28,7 +28,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
     ProfileScreen(),
   ];
 
-  GlobalKey<CurvedNavigationBarState> _bottomNavigationKey = GlobalKey();
+  final GlobalKey<CurvedNavigationBarState> _bottomNavigationKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +48,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
           ),
         ],
         title: Text(
-          'HealthChaine',
+          'HealthChain',
           style: TextStyle(
             color: AppColors.primaryColor,
             fontSize: 30.sp,

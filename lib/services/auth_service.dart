@@ -54,9 +54,9 @@ class AuthService {
       final String responseData = response.body;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print("OTP Verified Successfully: ${responseData}");
+        print("OTP Verified Successfully: $responseData");
       } else {
-        print("OTP Verification Failed: ${responseData}");
+        print("OTP Verification Failed: $responseData");
       }
 
       return responseData; // Return the response body as a string
