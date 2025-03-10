@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:health_chain/routes/app_router.dart';
+import 'package:health_chain/Screens/core/file_liste_screen.dart';
+
 import 'package:health_chain/widgets/FolderCategoryCard.dart';
-import 'package:health_chain/widgets/appBar.dart';
 
 import '../../utils/colors.dart';
 
@@ -19,33 +19,76 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       "titre": "allergy-intolerance",
       "itemNb": "5",
       "onTap": (BuildContext context) {
-        Navigator.pushNamed(context, AppRoutes.fileListeScreen);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                FileListeScreen(category: "allergy-intolerance"),
+          ),
+        );
       },
     },
     {
       "titre": "diagnostic-report",
       "itemNb": "5",
-      "onTap": () {},
+      "onTap": (BuildContext context) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                FileListeScreen(category: "diagnostic-report"),
+          ),
+        );
+      },
     },
     {
       "titre": "imaging-study",
       "itemNb": "5",
-      "onTap": () {},
+      "onTap": (BuildContext context) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FileListeScreen(category: "imaging-study"),
+          ),
+        );
+      },
     },
     {
       "titre": "medication-request",
       "itemNb": "5",
-      "onTap": () {},
+      "onTap": (BuildContext context) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                FileListeScreen(category: "medication-request"),
+          ),
+        );
+      },
     },
     {
       "titre": "observation",
       "itemNb": "5",
-      "onTap": () {},
+      "onTap": (BuildContext context) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FileListeScreen(category: "observation"),
+          ),
+        );
+      },
     },
     {
       "titre": "procedure",
       "itemNb": "5",
-      "onTap": () {},
+      "onTap": (BuildContext context) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FileListeScreen(category: "procedure"),
+          ),
+        );
+      },
     },
   ];
 
@@ -127,23 +170,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 },
               );
             },
-          )
-              // ListView.builder(
-              //   scrollDirection: Axis.vertical,
-              //   itemCount: FileCategoryItems.length,
-              //   itemBuilder: (context, index) {
-              //     final item = FileCategoryItems[index];
-              //     return FileCategoryCard(
-              //       title: item['titre'],
-              //       fileCount: item['itemNb'],
-              //       // You can replace this with a custom image
-              //       onMorePressed: () {
-              //         item['onTap'];
-              //       },
-              //     );
-              //   },
-              // ),
-              ),
+          )),
         ],
       ),
     )));

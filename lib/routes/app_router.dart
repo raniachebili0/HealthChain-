@@ -40,7 +40,6 @@ class AppRoutes {
   static const String servicesScreen = '/services_screen';
   static const String doctorFormView = '/doctor_form_view';
   static const String doctorsListScreen = '/doctors_list_screen';
-  static const String fileListeScreen = '/file_liste_screen';
 
   static Map<String, WidgetBuilder> routes = {
     onboarding: (context) => OnBoard(),
@@ -56,7 +55,6 @@ class AppRoutes {
     servicesScreen: (context) => RdvScreen(),
     doctorFormView: (context) => DoctorFormView(),
     doctorsListScreen: (context) => Doctorslistscreen(),
-    fileListeScreen: (context) => FileListeScreen(),
     mainScreen: (context) => BottomNavBar(),
     doctormainScreen: (context) => DoctorBottomNavBar(),
   };

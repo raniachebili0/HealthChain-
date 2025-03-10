@@ -4,15 +4,13 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/utils/colors.dart';
 import 'package:health_chain/widgets/FileCategoryCard.dart';
+import 'package:health_chain/widgets/see_file_item.dart';
 
-class FileListeScreen extends StatefulWidget {
-  const FileListeScreen({super.key});
+class FileListeScreen extends StatelessWidget {
+  final String category;
 
-  @override
-  State<FileListeScreen> createState() => _FileListeScreenState();
-}
+  const FileListeScreen({super.key, required this.category});
 
-class _FileListeScreenState extends State<FileListeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -40,11 +38,11 @@ class _FileListeScreenState extends State<FileListeScreen> {
         ),
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: TextField(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            children: [
+              TextField(
                 controller: null,
                 decoration: InputDecoration(
                   hintText: 'Search...',
@@ -61,57 +59,57 @@ class _FileListeScreenState extends State<FileListeScreen> {
                   // Handle search text changes
                 },
               ),
-            ),
-            FileCategoryCard(
-              title: "file name",
-              uploudDate: "5/15/2025",
-              // You can replace this with a custom image
-              onMorePressed: () {
-                print("More options clicked");
-              },
-            ),
-            FileCategoryCard(
-              title: "file name",
-              uploudDate: "17/08/2025",
-              // You can replace this with a custom image
-              onMorePressed: () {
-                print("More options clicked");
-              },
-            ),
-            FileCategoryCard(
-              title: "file name",
-              uploudDate: "02/5/2025",
-              // You can replace this with a custom image
-              onMorePressed: () {
-                print("More options clicked");
-              },
-            )
+              FileCategoryCard(
+                title: "file name",
+                uploudDate: "5/15/2025",
+                // You can replace this with a custom image
+                onMorePressed: () {
+                  print("More options clicked");
+                },
+              ),
+              FileCategoryCard(
+                title: "file name",
+                uploudDate: "17/08/2025",
+                // You can replace this with a custom image
+                onMorePressed: () {
+                  print("More options clicked");
+                },
+              ),
+              FileCategoryCard(
+                title: "file name",
+                uploudDate: "02/5/2025",
+                // You can replace this with a custom image
+                onMorePressed: () {
+                  print("More options clicked");
+                },
+              ),
 
-            // FutureBuilder<List<Map<String, dynamic>>>(
-            //   future: ************,
-            //   builder: (context, snapshot) {
-            //     if (snapshot.connectionState == ConnectionState.waiting) {
-            //       return Center(child: CircularProgressIndicator());
-            //     } else if (snapshot.hasError) {
-            //       return Center(child: Text("Error: ${snapshot.error}"));
-            //     } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            //       return Center(child: Text("No doctors found"));
-            //     } else {
-            //       final files = snapshot.data!;
-            //       return Expanded(
-            //         child: ListView.builder(
-            //           scrollDirection: Axis.vertical,
-            //           itemCount: files.length,
-            //           itemBuilder: (context, index) {
-            //             final file = files[index];
-            //             return FileCategoryCard(doctor: files);
-            //           },
-            //         ),
-            //       );
-            //     }
-            //   },
-            // ),
-          ],
+              // FutureBuilder<List<Map<String, dynamic>>>(
+              //   future: ************,
+              //   builder: (context, snapshot) {
+              //     if (snapshot.connectionState == ConnectionState.waiting) {
+              //       return Center(child: CircularProgressIndicator());
+              //     } else if (snapshot.hasError) {
+              //       return Center(child: Text("Error: ${snapshot.error}"));
+              //     } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              //       return Center(child: Text("No doctors found"));
+              //     } else {
+              //       final files = snapshot.data!;
+              //       return Expanded(
+              //         child: ListView.builder(
+              //           scrollDirection: Axis.vertical,
+              //           itemCount: files.length,
+              //           itemBuilder: (context, index) {
+              //             final file = files[index];
+              //             return FileCategoryCard(doctor: files);
+              //           },
+              //         ),
+              //       );
+              //     }
+              //   },
+              // ),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
