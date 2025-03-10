@@ -49,7 +49,7 @@ class MyApp extends StatelessWidget {
       // Use builder only if you need to use library outside ScreenUtilInit context
       builder: (_, child) {
         return MaterialApp(
-          //  initialRoute: AppRoutes.login,
+           initialRoute: AppRoutes.login,
           routes: AppRoutes.routes,
           debugShowCheckedModeBanner: false,
           title: 'First Method',
@@ -61,7 +61,7 @@ class MyApp extends StatelessWidget {
           home: child,
         );
       },
-      child: BottomNavBar(),
+     // child: BottomNavBar(),
     );
   }
 }

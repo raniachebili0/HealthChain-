@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  final String baseUrl = "http://10.0.2.2:3000/auth";
+  final String baseUrl = "http://127.0.0.1:3000/auth";
   final storage = FlutterSecureStorage();
 
   // Step 1: Send OTP
@@ -93,7 +93,7 @@ class AuthService {
 
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://10.0.2.2:3000/auth/signup'), // Adjust for emulator
+        Uri.parse('http://127.0.0.1:3000/auth/signup'), // Adjust for emulator
       );
 
       // ✅ Ajouter les données JSON comme champ de formulaire

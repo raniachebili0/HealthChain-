@@ -8,6 +8,7 @@ import 'package:health_chain/Screens/onboarding/Onboarding.dart';
 
 import '../Screens/auth/register/signupForm/user_form_view.dart';
 import '../Screens/auth/register/signupForm/doctor_form_view.dart';
+import '../Screens/core/doctor_screens/main_screnn_doctor.dart';
 import '../Screens/core/documents_screen.dart';
 import '../Screens/core/home_screen.dart';
 import '../Screens/core/main_screen.dart';
@@ -28,7 +29,8 @@ class AppRoutes {
   static const String homeScreen = '/home_screen';
   static const String rdvScreen = '/rdv_screen';
   static const String doctorFormView = '/doctor_form_view';
-
+  static const String doctorsListScreen = '/doctors_list_screen';
+   static const String doctormainScreen = '/main_screnn_doctor';
   // Add more route names here
 
   static Map<String, WidgetBuilder> routes = {
@@ -39,13 +41,15 @@ class AppRoutes {
     userFormView: (context) => const UserFormView(),
     filePickerScreen: (context) => FilePickerScreen(),
     imagePickerScreen: (context) => ImagePickerScreen(),
+    
     mainScreen: (context) => BottomNavBar(),
     documentScreen: (context) => DocumentsScreen(),
     notificationScreen: (context) => NotificationScreen(),
     homeScreen: (context) => HomeScreen(),
     rdvScreen: (context) => RdvScreen(),
     doctorFormView: (context) => DoctorFormView(),
-
+    doctormainScreen: (context) => DoctorBottomNavBar(),
+    
     // Add more routes here
   };
 }
