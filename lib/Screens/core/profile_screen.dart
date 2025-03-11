@@ -23,7 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SafeArea(
         child: Padding(
           padding:
-              EdgeInsets.only(left: 40.w, right: 40.w, top: 60.h, bottom: 90.h),
+              EdgeInsets.only(left: 40.w, right: 40.w, top: 20.h, bottom: 90.h),
           child: Column(
             children: [
               FutureBuilder<Map<String, dynamic>>(

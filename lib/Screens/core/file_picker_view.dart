@@ -1,16 +1,15 @@
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
-
 import 'dart:io';
-
+import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/utils/themes.dart';
+import 'package:pdfx/pdfx.dart';
+import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:health_chain/services/user_service.dart';
 import 'package:health_chain/widgets/appBar.dart';
 import 'package:health_chain/widgets/button.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:pdfx/pdfx.dart';
 
 class FilePickerScreen extends StatefulWidget {
   @override
@@ -37,6 +36,45 @@ class _FilePickerScreenState extends State<FilePickerScreen> {
     }
   }
 
+  Future<void> uploadFile(File? filePath) async {
+    if (filePath == null) return;
+
+    final uri = Uri.parse(
+        'http://10.0.2.2:3000/files/upload'); // Change to your server URL
+    var request = http.MultipartRequest('POST', uri);
+
+    var pic = await http.MultipartFile.fromPath(
+      'file',
+      filePath.path,
+    );
+    request.files.add(pic);
+
+    try {
+      final response = await request.send();
+
+      if (response.statusCode == 200) {
+        print('File uploaded successfully');
+        // Handle successful response here
+      } else {
+        print('Failed to upload file');
+        // Handle failure here
+      }
+    } catch (e) {
+      print('Error uploading file: $e');
+    }
+  }
+
+  void buttonAction(BuildContext context, String? pdfPath) async {
+    if (pdfPath != null && File(pdfPath).existsSync()) {
+      final userService = Provider.of<UserService>(context, listen: false);
+
+      // Call the uploadFile method with the file
+      await uploadFile(File(pdfPath));
+    } else {
+      print("No file selected or invalid path");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -45,9 +83,9 @@ class _FilePickerScreenState extends State<FilePickerScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const CustomAppBar(appbartext: 'Uploud file'),
+            const CustomAppBar(appbartext: 'Upload File'),
             Padding(
-              padding: EdgeInsets.fromLTRB(17.w, 0.h, 17.w, 20.h),
+              padding: EdgeInsets.fromLTRB(17.0, 0.0, 17.0, 20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -77,35 +115,30 @@ class _FilePickerScreenState extends State<FilePickerScreen> {
                                   decoration: BoxDecoration(
                                     color: Colors.white30,
                                     borderRadius: BorderRadius.circular(10),
-                                    // Optional, for rounded corners
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.black.withOpacity(0.2),
-                                        // Shadow color
                                         offset: Offset(0, 4),
-                                        // Horizontal and vertical offset
                                         blurRadius: 6,
-                                        // Blur radius of the shadow
-                                        spreadRadius:
-                                            1, // How much the shadow spreads
+                                        spreadRadius: 1,
                                       ),
                                     ],
                                   ),
                                   child: Center(
-                                      child: IconButton(
-                                    onPressed: pickFile,
-                                    icon: Icon(Icons.file_open_rounded),
-                                    tooltip: "Pick Image",
-                                    iconSize: 70,
-                                  )),
+                                    child: IconButton(
+                                      onPressed: pickFile,
+                                      icon: Icon(Icons.file_open_rounded),
+                                      tooltip: "Pick PDF",
+                                      iconSize: 70,
+                                    ),
+                                  ),
                                 ),
                         ),
-                        SizedBox(height: 120.h),
+                        SizedBox(height: 120),
                         MyButton(
-                            buttonFunction: () => null,
-                            //Navigator.pushNamed(
-                            //     context, AppRoutes.validationDuCompte),
-                            buttonText: 'Upload'),
+                          buttonFunction: () => buttonAction(context, pdfPath),
+                          buttonText: 'Upload',
+                        ),
                       ],
                     ),
                   ),

@@ -17,7 +17,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   List<Map<String, dynamic>> FileCategoryItems = [
     {
       "titre": "allergy-intolerance",
-      "itemNb": "5",
+      "itemNb": "3",
       "onTap": (BuildContext context) {
         Navigator.push(
           context,
@@ -30,7 +30,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     },
     {
       "titre": "diagnostic-report",
-      "itemNb": "5",
+      "itemNb": "0",
       "onTap": (BuildContext context) {
         Navigator.push(
           context,
@@ -43,7 +43,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     },
     {
       "titre": "imaging-study",
-      "itemNb": "5",
+      "itemNb": "0",
       "onTap": (BuildContext context) {
         Navigator.push(
           context,
@@ -55,7 +55,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     },
     {
       "titre": "medication-request",
-      "itemNb": "5",
+      "itemNb": "0",
       "onTap": (BuildContext context) {
         Navigator.push(
           context,
@@ -68,7 +68,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     },
     {
       "titre": "observation",
-      "itemNb": "5",
+      "itemNb": "0",
       "onTap": (BuildContext context) {
         Navigator.push(
           context,
@@ -80,7 +80,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     },
     {
       "titre": "procedure",
-      "itemNb": "5",
+      "itemNb": "0",
       "onTap": (BuildContext context) {
         Navigator.push(
           context,

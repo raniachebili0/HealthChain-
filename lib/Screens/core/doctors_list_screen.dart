@@ -15,22 +15,63 @@ class Doctorslistscreen extends StatefulWidget {
 }
 
 class _DoctorslistscreenState extends State<Doctorslistscreen> {
+  final UserService userService = UserService();
+  final TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> _allDoctors = [];
+  List<Map<String, dynamic>> _filteredDoctors = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDoctors();
+    _searchController.addListener(_filterDoctors);
+  }
+
+  Future<void> _fetchDoctors() async {
+    try {
+      final doctors = await userService.getAllDoctors();
+      setState(() {
+        _allDoctors = doctors;
+        _filteredDoctors = doctors; // Initially, show all doctors
+      });
+    } catch (error) {
+      print("Error fetching doctors: $error");
+    }
+  }
+
+  void _filterDoctors() {
+    String query = _searchController.text.toLowerCase();
+
+    setState(() {
+      _filteredDoctors = _allDoctors.where((doctor) {
+        // Ensure values are strings and handle null safely
+        String name = (doctor['name'] ?? '').toString().toLowerCase();
+        String specialty = (doctor['specialty'] ?? '').toString().toLowerCase();
+
+        return name.contains(query) || specialty.contains(query);
+      }).toList();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final UserService userService = UserService();
     return Scaffold(
       appBar: AppBar(
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              IconButton(
-                iconSize: 30,
-                icon: Icon(Icons.notifications_rounded),
-                color: Color(0xD25B5B5B),
-                onPressed: () {},
-              )
-            ]),
+            child: IconButton(
+              iconSize: 30,
+              icon: Icon(Icons.notifications_rounded),
+              color: Color(0xD25B5B5B),
+              onPressed: () {},
+            ),
           ),
         ],
         title: Text(
@@ -45,12 +86,13 @@ class _DoctorslistscreenState extends State<Doctorslistscreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // Search Bar
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: TextField(
-                controller: null,
+                controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Search...',
+                  hintText: 'Search doctors...',
                   hintStyle: TextStyle(color: Color(0xFF949393)),
                   prefixIcon: Icon(Icons.search),
                   border: OutlineInputBorder(
@@ -60,28 +102,17 @@ class _DoctorslistscreenState extends State<Doctorslistscreen> {
                   filled: true,
                   fillColor: Color(0xFFCBE0F3),
                 ),
-                onChanged: (value) {
-                  // Handle search text changes
-                },
               ),
             ),
-            FutureBuilder<List<Map<String, dynamic>>>(
-              future: userService.getAllDoctors(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return Center(child: Text("Error: ${snapshot.error}"));
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(child: Text("No doctors found"));
-                } else {
-                  final doctors = snapshot.data!;
-                  return Expanded(
-                    child: ListView.builder(
-                      scrollDirection: Axis.vertical,
-                      itemCount: doctors.length,
+
+            // Doctor List
+            Expanded(
+              child: _filteredDoctors.isEmpty
+                  ? Center(child: Text("No doctors found"))
+                  : ListView.builder(
+                      itemCount: _filteredDoctors.length,
                       itemBuilder: (context, index) {
-                        final doctor = doctors[index];
+                        final doctor = _filteredDoctors[index];
                         return DoctorListCard(
                           doctor: doctor,
                           onTap: () {
@@ -96,9 +127,6 @@ class _DoctorslistscreenState extends State<Doctorslistscreen> {
                         );
                       },
                     ),
-                  );
-                }
-              },
             ),
           ],
         ),

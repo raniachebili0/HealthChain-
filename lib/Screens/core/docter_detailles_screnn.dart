@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:health_chain/Screens/core/CreateAppointmentScreen.dart';
 import 'package:health_chain/utils/colors.dart';
 import 'package:health_chain/widgets/appBar.dart';
 
@@ -118,7 +119,14 @@ class DoctorDetailsScreen extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 18),
                   child: Center(
                     child: ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => CreateAppointmentScreen(
+                                  doctorId: doctor['_id'])),
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryColor,
                         padding: EdgeInsets.symmetric(
