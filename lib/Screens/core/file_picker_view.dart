@@ -1,8 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/utils/themes.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +13,8 @@ import 'package:http/http.dart' as http;
 import 'package:health_chain/services/user_service.dart';
 import 'package:health_chain/widgets/appBar.dart';
 import 'package:health_chain/widgets/button.dart';
+import 'package:mime/mime.dart';
+import 'package:http_parser/http_parser.dart';
 
 class FilePickerScreen extends StatefulWidget {
   @override
@@ -19,6 +24,8 @@ class FilePickerScreen extends StatefulWidget {
 class _FilePickerScreenState extends State<FilePickerScreen> {
   String? pdfPath;
   PdfController? pdfController;
+  final String baseUrl = 'http://10.0.2.2:3000/medical-records';
+  final storage = FlutterSecureStorage();
 
   Future<void> pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -36,42 +43,78 @@ class _FilePickerScreenState extends State<FilePickerScreen> {
     }
   }
 
-  Future<void> uploadFile(File? filePath) async {
-    if (filePath == null) return;
+  Future<String?> getAuthToken() async {
+    return await storage.read(key: "auth_token");
+  }
 
-    final uri = Uri.parse(
-        'http://10.0.2.2:3000/files/upload'); // Change to your server URL
-    var request = http.MultipartRequest('POST', uri);
-
-    var pic = await http.MultipartFile.fromPath(
-      'file',
-      filePath.path,
-    );
-    request.files.add(pic);
-
+  Future<Map<String, dynamic>> uploadFile(File file, String fileType) async {
     try {
-      final response = await request.send();
+      String? authToken = await getAuthToken();
+      if (authToken == null) throw Exception("Authentication token is missing");
 
-      if (response.statusCode == 200) {
-        print('File uploaded successfully');
-        // Handle successful response here
+      var uri = Uri.parse('$baseUrl/upload');
+      var request = http.MultipartRequest('POST', uri)
+        ..headers['Authorization'] = 'Bearer $authToken'
+        ..fields['fileType'] = fileType
+        ..files.add(
+          await http.MultipartFile.fromPath(
+            'file',
+            file.path,
+            contentType: MediaType.parse(
+                lookupMimeType(file.path) ?? 'application/octet-stream'),
+          ),
+        );
+
+      var response = await request.send();
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        var responseBody = await response.stream.bytesToString();
+        return json.decode(responseBody);
       } else {
-        print('Failed to upload file');
-        // Handle failure here
+        throw Exception('Failed to upload file');
       }
     } catch (e) {
-      print('Error uploading file: $e');
+      throw Exception('Error uploading file: $e');
     }
   }
 
   void buttonAction(BuildContext context, String? pdfPath) async {
     if (pdfPath != null && File(pdfPath).existsSync()) {
-      final userService = Provider.of<UserService>(context, listen: false);
+      try {
+        await uploadFile(File(pdfPath), "observation");
 
-      // Call the uploadFile method with the file
-      await uploadFile(File(pdfPath));
+        // Show success alert dialog
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text("Success"),
+              content: Text("File uploaded successfully!"),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close the alert dialog
+                    Navigator.pushReplacementNamed(context,
+                        AppRoutes.documentScreen); // Navigate to DocumentScreen
+                  },
+                  child: Text("OK"),
+                ),
+              ],
+            );
+          },
+        );
+      } catch (e) {
+        print("Error: $e");
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to upload file')),
+        );
+      }
     } else {
       print("No file selected or invalid path");
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please select a valid file')),
+      );
     }
   }
 
@@ -92,7 +135,7 @@ class _FilePickerScreenState extends State<FilePickerScreen> {
                   Padding(
                     padding: EdgeInsets.only(bottom: 13.h),
                     child: Text(
-                      'Hi patient ,Add your document',
+                      'Hi patient, Add your document',
                       style: CustomTextStyle.titleStyle,
                     ),
                   ),

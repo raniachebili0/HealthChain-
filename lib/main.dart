@@ -17,6 +17,7 @@ import 'package:health_chain/Screens/core/profile_screen.dart';
 import 'package:health_chain/models/SharedData.dart';
 import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/services/auth_service.dart';
+import 'package:health_chain/services/document_service.dart';
 import 'package:health_chain/services/user_service.dart';
 import 'package:health_chain/widgets/animated_widget.dart';
 import 'package:provider/provider.dart';
@@ -39,6 +40,9 @@ Future<void> main() async {
         Provider<SharedData>(create: (_) => SharedData()),
         Provider<AuthService>(create: (_) => AuthService()),
         Provider<UserService>(create: (_) => UserService()),
+        ChangeNotifierProvider<MedicalRecordsService>(
+          create: (_) => MedicalRecordsService(),
+        ),
         ChangeNotifierProvider<LoginViewModel>(
           create: (context) => LoginViewModel(context.read<AuthService>()),
         ),
@@ -70,7 +74,7 @@ class MyApp extends StatelessWidget {
       // Use builder only if you need to use library outside ScreenUtilInit context
       builder: (_, child) {
         return MaterialApp(
-          initialRoute: isviewed != 0 ? AppRoutes.onboarding : AppRoutes.login,
+          //  initialRoute: isviewed != 0 ? AppRoutes.onboarding : AppRoutes.login,
           routes: AppRoutes.routes,
           debugShowCheckedModeBanner: false,
           title: 'First Method',
@@ -82,7 +86,7 @@ class MyApp extends StatelessWidget {
           home: child,
         );
       },
-      // child: BottomNavBar(),
+      child: LoginScreen(),
     );
   }
 }

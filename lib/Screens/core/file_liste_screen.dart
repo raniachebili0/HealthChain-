@@ -2,32 +2,40 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:health_chain/routes/app_router.dart';
+import 'package:health_chain/services/document_service.dart';
 import 'package:health_chain/utils/colors.dart';
 import 'package:health_chain/widgets/FileCategoryCard.dart';
 import 'package:health_chain/widgets/see_file_item.dart';
+import 'package:provider/provider.dart';
 
-class FileListeScreen extends StatelessWidget {
+import '../../services/document_service.dart';
+
+class FileListeScreen extends StatefulWidget {
   final String category;
 
   const FileListeScreen({super.key, required this.category});
 
   @override
+  State<FileListeScreen> createState() => _FileListeScreenState();
+}
+
+class _FileListeScreenState extends State<FileListeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load files after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final medicalRecordsService =
+          Provider.of<MedicalRecordsService>(context, listen: false);
+      medicalRecordsService.loadFiles(widget.category);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final medicalRecordsService = Provider.of<MedicalRecordsService>(context);
     return Scaffold(
       appBar: AppBar(
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              IconButton(
-                iconSize: 30,
-                icon: Icon(Icons.notifications_rounded),
-                color: Color(0xD25B5B5B),
-                onPressed: () {},
-              )
-            ]),
-          ),
-        ],
         title: Text(
           'HealthChaine',
           style: TextStyle(
@@ -36,6 +44,13 @@ class FileListeScreen extends StatelessWidget {
             fontWeight: FontWeight.w900,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.notifications_rounded),
+            onPressed: () {},
+            color: Color(0xD25B5B5B),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(
@@ -43,10 +58,8 @@ class FileListeScreen extends StatelessWidget {
           child: Column(
             children: [
               TextField(
-                controller: null,
                 decoration: InputDecoration(
                   hintText: 'Search...',
-                  hintStyle: TextStyle(color: Color(0xFF949393)),
                   prefixIcon: Icon(Icons.search),
                   border: OutlineInputBorder(
                     borderSide: BorderSide.none,
@@ -55,59 +68,37 @@ class FileListeScreen extends StatelessWidget {
                   filled: true,
                   fillColor: Color(0xFFCBE0F3),
                 ),
-                onChanged: (value) {
-                  // Handle search text changes
-                },
               ),
-              FileCategoryCard(
-                title: "file name",
-                uploudDate: "5/15/2025",
-                // You can replace this with a custom image
-                onMorePressed: () {
-                  print("More options clicked");
-                },
-              ),
-              FileCategoryCard(
-                title: "file name",
-                uploudDate: "17/08/2025",
-                // You can replace this with a custom image
-                onMorePressed: () {
-                  print("More options clicked");
-                },
-              ),
-              FileCategoryCard(
-                title: "file name",
-                uploudDate: "02/5/2025",
-                // You can replace this with a custom image
-                onMorePressed: () {
-                  print("More options clicked");
-                },
-              ),
+              Expanded(
+                child: StreamBuilder<List<dynamic>>(
+                  stream: medicalRecordsService.filesStream,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return const Center(child: Text('No files found.'));
+                    }
 
-              // FutureBuilder<List<Map<String, dynamic>>>(
-              //   future: ************,
-              //   builder: (context, snapshot) {
-              //     if (snapshot.connectionState == ConnectionState.waiting) {
-              //       return Center(child: CircularProgressIndicator());
-              //     } else if (snapshot.hasError) {
-              //       return Center(child: Text("Error: ${snapshot.error}"));
-              //     } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              //       return Center(child: Text("No doctors found"));
-              //     } else {
-              //       final files = snapshot.data!;
-              //       return Expanded(
-              //         child: ListView.builder(
-              //           scrollDirection: Axis.vertical,
-              //           itemCount: files.length,
-              //           itemBuilder: (context, index) {
-              //             final file = files[index];
-              //             return FileCategoryCard(doctor: files);
-              //           },
-              //         ),
-              //       );
-              //     }
-              //   },
-              // ),
+                    final files = snapshot.data!;
+                    return ListView.builder(
+                      itemCount: files.length,
+                      itemBuilder: (context, index) {
+                        final file = files[index];
+                        return FileCategoryCard(
+                          title: file['fileName'] ?? 'Unnamed File',
+                          uploudDate:
+                              file['uplodeDate'] ?? 'no data cration File',
+                          onMorePressed: () {
+                            _showFileActions(context, file);
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
             ],
           ),
         ),
@@ -121,4 +112,85 @@ class FileListeScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+void _showFileActions(BuildContext context, dynamic file) {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) {
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: Icon(Icons.visibility),
+              title: Text('View File'),
+              onTap: () {
+                Navigator.pop(context);
+                // Add view logic here
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Viewing ${file['name']}')),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.edit),
+              title: Text('Give file access'),
+              onTap: () {
+                Navigator.pop(context);
+                // Add edit logic here
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Editing ${file['name']}')),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete),
+              title: Text('Delete File'),
+              onTap: () {
+                Navigator.pop(context);
+                _confirmDelete(context, file);
+              },
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+void _confirmDelete(BuildContext context, dynamic file) {
+  final medicalRecordsService =
+      Provider.of<MedicalRecordsService>(context, listen: false);
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text('Delete File'),
+        content: Text('Are you sure you want to delete "${file['name']}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // Cancel
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              medicalRecordsService.deleteFile(file['_id'], file['fileType']);
+              // ScaffoldMessenger.of(context).showSnackBar(
+              //  // SnackBar(content: Text('File "${file['_id']}" deleted.')),
+              // );
+            },
+            child: Text('Delete'),
+          ),
+        ],
+      );
+    },
+  );
 }
