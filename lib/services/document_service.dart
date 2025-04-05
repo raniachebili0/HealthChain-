@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
+import 'package:path_provider/path_provider.dart';
 
 class MedicalRecordsService extends ChangeNotifier {
   final String baseUrl = 'http://10.0.2.2:3000/medical-records';
@@ -79,17 +80,25 @@ class MedicalRecordsService extends ChangeNotifier {
     try {
       String? authToken = await getAuthToken();
       if (authToken == null) throw Exception("Authentication token is missing");
+
       var response = await http.get(
         Uri.parse('$baseUrl/$fileId'),
         headers: {
           'Authorization': 'Bearer $authToken',
-          'Content-Type': 'application/json',
         },
       );
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.body; // Return file content or URL
+        Directory tempDir = await getTemporaryDirectory();
+        String filePath =
+            '${tempDir.path}/downloaded_file.pdf'; // Adjust based on file type
+
+        File file = File(filePath);
+        await file.writeAsBytes(response.bodyBytes);
+
+        return filePath; // ✅ Return file path instead of void
       } else {
-        throw Exception('Failed to view file');
+        throw Exception('Failed to download file');
       }
     } catch (e) {
       throw Exception('Error viewing file: $e');

@@ -7,6 +7,7 @@ import 'package:health_chain/utils/colors.dart';
 import 'package:health_chain/widgets/FileCategoryCard.dart';
 import 'package:health_chain/widgets/see_file_item.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../services/document_service.dart';
 
@@ -128,22 +129,43 @@ void _showFileActions(BuildContext context, dynamic file) {
             ListTile(
               leading: Icon(Icons.visibility),
               title: Text('View File'),
-              onTap: () {
+              onTap: () async {
+                final medicalRecordsService =
+                    Provider.of<MedicalRecordsService>(context, listen: false);
                 Navigator.pop(context);
-                // Add view logic here
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Viewing ${file['name']}')),
-                );
+                try {
+                  final fileUrlOrContent =
+                      await medicalRecordsService.viewFile(file['_id']);
+                  print("aaaaaaaaaaaaaaaa ${fileUrlOrContent}");
+                  // Navigate to view screen or open URL depending on your backend
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FileViewerScreen(
+                        fileUrl: fileUrlOrContent,
+                        fileName: file['fileName'] ?? 'Unnamed File',
+                      ),
+                    ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error viewing file: $e')),
+                  );
+                }
               },
             ),
             ListTile(
               leading: Icon(Icons.edit),
               title: Text('Give file access'),
               onTap: () {
-                Navigator.pop(context);
-                // Add edit logic here
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Editing ${file['name']}')),
+                showDialog(
+                  context: context,
+                  builder: (context) {
+                    return AccessFileFormDialog(
+                      fileName: file['fileName'],
+                      fileUrl: file['fileUrl'],
+                    );
+                  },
                 );
               },
             ),
@@ -193,4 +215,159 @@ void _confirmDelete(BuildContext context, dynamic file) {
       );
     },
   );
+}
+
+class FileViewerScreen extends StatelessWidget {
+  final String fileUrl;
+  final String fileName;
+
+  const FileViewerScreen({
+    super.key,
+    required this.fileUrl,
+    required this.fileName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(fileName)),
+      body: InAppWebView(
+        initialUrlRequest: URLRequest(
+          url: WebUri(fileUrl), // ✅ FIX: use WebUri instead of Uri.parse
+        ),
+      ),
+    );
+  }
+}
+
+class AccessFileFormDialog extends StatefulWidget {
+  final String fileUrl;
+  final String fileName;
+
+  const AccessFileFormDialog({
+    super.key,
+    required this.fileUrl,
+    required this.fileName,
+  });
+
+  @override
+  _AccessFileFormDialogState createState() => _AccessFileFormDialogState();
+}
+
+class _AccessFileFormDialogState extends State<AccessFileFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+
+  String? selectedDoctorId;
+  DateTime? startDate;
+  DateTime? endDate;
+
+  // Dummy list of doctors for example purposes
+  final List<Map<String, String>> doctors = [
+    {'id': 'doc1', 'name': 'Dr. Smith'},
+    {'id': 'doc2', 'name': 'Dr. Johnson'},
+    {'id': 'doc3', 'name': 'Dr. El Amri'},
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Give Access to File'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              Text('File: ${widget.fileName}'),
+              SizedBox(height: 10),
+
+              // Doctor Dropdown
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(labelText: 'Choose Doctor'),
+                value: selectedDoctorId,
+                items: doctors.map((doctor) {
+                  return DropdownMenuItem<String>(
+                    value: doctor['id'],
+                    child: Text(doctor['name'] ?? ''),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  setState(() {
+                    selectedDoctorId = val;
+                  });
+                },
+                validator: (value) =>
+                    value == null ? 'Please select a doctor' : null,
+              ),
+
+              SizedBox(height: 12),
+
+              // Start Date
+              ElevatedButton(
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(2023),
+                    lastDate: DateTime(2100),
+                  );
+                  if (picked != null) setState(() => startDate = picked);
+                },
+                child: Text(
+                  startDate != null
+                      ? 'Start: ${startDate!.toLocal()}'.split(' ')[0]
+                      : 'Select Start Date',
+                ),
+              ),
+
+              // End Date
+              ElevatedButton(
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(2023),
+                    lastDate: DateTime(2100),
+                  );
+                  if (picked != null) setState(() => endDate = picked);
+                },
+                child: Text(
+                  endDate != null
+                      ? 'End: ${endDate!.toLocal()}'.split(' ')[0]
+                      : 'Select End Date',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (_formKey.currentState?.validate() != true) return;
+
+            // Prepare your data object
+            final accessFile = {
+              'fileUrl': widget.fileUrl,
+              'fileName': widget.fileName,
+              'DebuitAccessDate': startDate?.toIso8601String(),
+              'FinAccessDate': endDate?.toIso8601String(),
+              'doctor': selectedDoctorId,
+              // 'patient': currentPatientId (set based on app state)
+            };
+
+            print("Access File Submitted: $accessFile");
+
+            // TODO: Send data to your API
+
+            Navigator.of(context).pop();
+          },
+          child: Text('Submit'),
+        ),
+      ],
+    );
+  }
 }
