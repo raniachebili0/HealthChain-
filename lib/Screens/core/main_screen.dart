@@ -48,7 +48,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
           ),
         ],
         title: Text(
-          'HealthChaine',
+          'HealthChain',
           style: TextStyle(
             color: AppColors.primaryColor,
             fontSize: 30.sp,

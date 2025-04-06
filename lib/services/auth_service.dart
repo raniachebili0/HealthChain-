@@ -152,6 +152,7 @@ class AuthService {
 
         await storage.write(key: "auth_token", value: accessToken);
         await storage.write(key: "user_role", value: role);
+        await storage.write(key: "user_id", value: userId);
         print("Login successful, access token: $accessToken");
 
         return "Login successful";

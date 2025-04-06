@@ -63,7 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     Padding(
-                      padding: EdgeInsets.all(20),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.start,
@@ -76,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: Colors.blue[900],
                             ),
                           ),
-                          SizedBox(height: 10),
+                          SizedBox(height: 5),
                           Text(
                             'We  provide best quality medical\nservices without further cost.',
                             textAlign: TextAlign.start,
@@ -86,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: Colors.blue[800],
                             ),
                           ),
-                          SizedBox(height: 15),
+                          SizedBox(height: 10),
                           ElevatedButton(
                             onPressed: () {
                               // Add your onPressed code here!

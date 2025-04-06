@@ -33,11 +33,13 @@ class DoctorCard extends StatelessWidget {
           children: [
             // Doctor Image
             ClipRRect(
-              borderRadius: const BorderRadius.all(
-                Radius.circular(30),
-              ),
-              child:
-                  doctor['photo'] != null && doctor['photo'].startsWith("http")
+                borderRadius: const BorderRadius.all(
+                  Radius.circular(30),
+                ),
+                child: Hero(
+                  tag: doctor['photo'],
+                  child: doctor['photo'] != null &&
+                          doctor['photo'].startsWith("http")
                       ? Image.network(
                           doctor['photo'],
                           width: double.infinity,
@@ -55,7 +57,7 @@ class DoctorCard extends StatelessWidget {
                           height: double.infinity,
                           fit: BoxFit.cover,
                         ),
-            ),
+                )),
 
             // Doctor Info
             Align(

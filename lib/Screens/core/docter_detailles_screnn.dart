@@ -41,27 +41,30 @@ class DoctorDetailsScreen extends StatelessWidget {
                       mainAxisSize: MainAxisSize.max,
                       children: [
                         SizedBox(
-                          height: 150.h,
-                          width: 150.w,
-                          child: doctor['photo'] != null &&
-                                  doctor['photo'].startsWith("http")
-                              ? Image.network(
-                                  doctor['photo'],
-                                  // width: 100,
-                                  // height: 100,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      Icon(Icons.person,
-                                          size: 50,
-                                          color: Colors.grey.shade400),
-                                )
-                              : Image.asset(
-                                  'assets/images/Landing.png',
-                                  width: 100,
-                                  height: 100,
-                                  fit: BoxFit.cover,
-                                ),
-                        ),
+                            height: 150.h,
+                            width: 150.w,
+                            child: Hero(
+                              tag: doctor['photo'],
+                              child: doctor['photo'] != null &&
+                                      doctor['photo'].startsWith("http")
+                                  ? Image.network(
+                                      doctor['photo'],
+                                      // width: 100,
+                                      // height: 100,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) => Icon(
+                                              Icons.person,
+                                              size: 50,
+                                              color: Colors.grey.shade400),
+                                    )
+                                  : Image.asset(
+                                      'assets/images/Landing.png',
+                                      width: 100,
+                                      height: 100,
+                                      fit: BoxFit.cover,
+                                    ),
+                            )),
                         SizedBox(height: 8.h),
                         Text(
                           "Dr. ${doctor['name']}" ?? "User Name",

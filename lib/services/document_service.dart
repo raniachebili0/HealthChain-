@@ -125,4 +125,43 @@ class MedicalRecordsService extends ChangeNotifier {
       throw Exception('Error deleting file: $e');
     }
   }
+
+  Future<void> createAccessFile({
+    required String fileName,
+    String? doctor,
+    String? description,
+    DateTime? debuitAccessDate,
+    DateTime? finAccessDate,
+    String? fileUrl,
+    String? fileType,
+  }) async {
+    final url = Uri.parse('$baseUrl/accessfile');
+    String? user = await storage.read(key: "user_id");
+    final body = {
+      'fileName': fileName,
+      'patient': user,
+      'doctor': doctor,
+      if (debuitAccessDate != null)
+        'DebuitAccessDate': debuitAccessDate.toIso8601String(),
+      if (finAccessDate != null)
+        'FinAccessDate': finAccessDate.toIso8601String(),
+      if (fileUrl != null) 'fileUrl': fileUrl,
+    };
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        print('File access created successfully: ${response.body}');
+      } else {
+        print('Failed to create file access: ${response.body}');
+      }
+    } catch (e) {
+      print('Error occurred: $e');
+    }
+  }
 }

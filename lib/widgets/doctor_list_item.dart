@@ -34,29 +34,31 @@ class DoctorListCard extends StatelessWidget {
             SizedBox(
               width: 150.w,
               child: ClipRRect(
-                borderRadius: const BorderRadius.all(
-                  Radius.circular(30),
-                ),
-                child: doctor['photo'] != null &&
-                        doctor['photo'].startsWith("http")
-                    ? Image.network(
-                        doctor['photo'],
-                        width: double.infinity,
-                        height: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Icon(
-                          Icons.person,
-                          size: 50,
-                          color: Colors.grey.shade400,
-                        ),
-                      )
-                    : Image.asset(
-                        'assets/imeges/defultDoctor.png',
-                        width: double.infinity,
-                        height: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-              ),
+                  borderRadius: const BorderRadius.all(
+                    Radius.circular(30),
+                  ),
+                  child: Hero(
+                    tag: doctor['photo'],
+                    child: doctor['photo'] != null &&
+                            doctor['photo'].startsWith("http")
+                        ? Image.network(
+                            doctor['photo'],
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Icon(
+                              Icons.person,
+                              size: 50,
+                              color: Colors.grey.shade400,
+                            ),
+                          )
+                        : Image.asset(
+                            'assets/imeges/defultDoctor.png',
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                  )),
             ),
             Padding(
               padding: const EdgeInsets.only(left: 10.0, bottom: 20, top: 20),

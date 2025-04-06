@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/services/document_service.dart';
+import 'package:health_chain/services/user_service.dart';
 import 'package:health_chain/utils/colors.dart';
 import 'package:health_chain/widgets/FileCategoryCard.dart';
 import 'package:health_chain/widgets/see_file_item.dart';
@@ -116,6 +117,7 @@ class _FileListeScreenState extends State<FileListeScreen> {
 }
 
 void _showFileActions(BuildContext context, dynamic file) {
+  final UserService userService = UserService();
   showModalBottomSheet(
     context: context,
     shape: const RoundedRectangleBorder(
@@ -130,19 +132,13 @@ void _showFileActions(BuildContext context, dynamic file) {
               leading: Icon(Icons.visibility),
               title: Text('View File'),
               onTap: () async {
-                final medicalRecordsService =
-                    Provider.of<MedicalRecordsService>(context, listen: false);
                 Navigator.pop(context);
                 try {
-                  final fileUrlOrContent =
-                      await medicalRecordsService.viewFile(file['_id']);
-                  print("aaaaaaaaaaaaaaaa ${fileUrlOrContent}");
-                  // Navigate to view screen or open URL depending on your backend
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => FileViewerScreen(
-                        fileUrl: fileUrlOrContent,
+                        fileUrl: file['fileUrl'],
                         fileName: file['fileName'] ?? 'Unnamed File',
                       ),
                     ),
@@ -157,11 +153,14 @@ void _showFileActions(BuildContext context, dynamic file) {
             ListTile(
               leading: Icon(Icons.edit),
               title: Text('Give file access'),
-              onTap: () {
+              onTap: () async {
+                final List<Map<String, dynamic>> doctors =
+                    await userService.getAllDoctors();
                 showDialog(
                   context: context,
                   builder: (context) {
                     return AccessFileFormDialog(
+                      doctors: doctors,
                       fileName: file['fileName'],
                       fileUrl: file['fileUrl'],
                     );
@@ -243,11 +242,13 @@ class FileViewerScreen extends StatelessWidget {
 class AccessFileFormDialog extends StatefulWidget {
   final String fileUrl;
   final String fileName;
+  final List doctors;
 
   const AccessFileFormDialog({
     super.key,
     required this.fileUrl,
     required this.fileName,
+    required this.doctors,
   });
 
   @override
@@ -261,15 +262,10 @@ class _AccessFileFormDialogState extends State<AccessFileFormDialog> {
   DateTime? startDate;
   DateTime? endDate;
 
-  // Dummy list of doctors for example purposes
-  final List<Map<String, String>> doctors = [
-    {'id': 'doc1', 'name': 'Dr. Smith'},
-    {'id': 'doc2', 'name': 'Dr. Johnson'},
-    {'id': 'doc3', 'name': 'Dr. El Amri'},
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final medicalRecordsService =
+        Provider.of<MedicalRecordsService>(context, listen: false);
     return AlertDialog(
       title: Text('Give Access to File'),
       content: SingleChildScrollView(
@@ -284,9 +280,9 @@ class _AccessFileFormDialogState extends State<AccessFileFormDialog> {
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(labelText: 'Choose Doctor'),
                 value: selectedDoctorId,
-                items: doctors.map((doctor) {
+                items: widget.doctors.map((doctor) {
                   return DropdownMenuItem<String>(
-                    value: doctor['id'],
+                    value: doctor['_id'],
                     child: Text(doctor['name'] ?? ''),
                   );
                 }).toList(),
@@ -304,36 +300,70 @@ class _AccessFileFormDialogState extends State<AccessFileFormDialog> {
               // Start Date
               ElevatedButton(
                 onPressed: () async {
-                  final picked = await showDatePicker(
+                  final pickedDate = await showDatePicker(
                     context: context,
                     initialDate: DateTime.now(),
                     firstDate: DateTime(2023),
                     lastDate: DateTime(2100),
                   );
-                  if (picked != null) setState(() => startDate = picked);
+
+                  if (pickedDate != null) {
+                    final pickedTime = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.fromDateTime(DateTime.now()),
+                    );
+
+                    if (pickedTime != null) {
+                      final combined = DateTime(
+                        pickedDate.year,
+                        pickedDate.month,
+                        pickedDate.day,
+                        pickedTime.hour,
+                        pickedTime.minute,
+                      );
+                      setState(() => startDate = combined);
+                    }
+                  }
                 },
                 child: Text(
                   startDate != null
-                      ? 'Start: ${startDate!.toLocal()}'.split(' ')[0]
-                      : 'Select Start Date',
+                      ? 'Start: ${startDate!.toLocal()}'
+                      : 'Select Start Date & Time',
                 ),
               ),
 
               // End Date
               ElevatedButton(
                 onPressed: () async {
-                  final picked = await showDatePicker(
+                  final pickedDate = await showDatePicker(
                     context: context,
                     initialDate: DateTime.now(),
                     firstDate: DateTime(2023),
                     lastDate: DateTime(2100),
                   );
-                  if (picked != null) setState(() => endDate = picked);
+
+                  if (pickedDate != null) {
+                    final pickedTime = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.fromDateTime(DateTime.now()),
+                    );
+
+                    if (pickedTime != null) {
+                      final combined = DateTime(
+                        pickedDate.year,
+                        pickedDate.month,
+                        pickedDate.day,
+                        pickedTime.hour,
+                        pickedTime.minute,
+                      );
+                      setState(() => endDate = combined);
+                    }
+                  }
                 },
                 child: Text(
                   endDate != null
-                      ? 'End: ${endDate!.toLocal()}'.split(' ')[0]
-                      : 'Select End Date',
+                      ? 'End: ${endDate!.toLocal()}'
+                      : 'Select End Date & Time',
                 ),
               ),
             ],
@@ -361,7 +391,13 @@ class _AccessFileFormDialogState extends State<AccessFileFormDialog> {
 
             print("Access File Submitted: $accessFile");
 
-            // TODO: Send data to your API
+            medicalRecordsService.createAccessFile(
+              fileName: widget.fileName,
+              doctor: selectedDoctorId,
+              debuitAccessDate: startDate,
+              finAccessDate: endDate,
+              fileUrl: widget.fileUrl,
+            );
 
             Navigator.of(context).pop();
           },
