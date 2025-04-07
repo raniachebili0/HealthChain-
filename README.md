@@ -1,12 +1,13 @@
-# File to NFT Converter
+# HealthChain NFT Project
 
-This project allows you to convert any file into an NFT using NestJS, Solidity, and IPFS (NFT.Storage).
+This project is part of the HealthChain platform, implementing NFT functionality for medical records and documents.
 
-## Prerequisites
+## Features
 
-- Node.js (v14 or higher)
-- Ganache (for local blockchain)
-- MetaMask (for interacting with the blockchain)
+- Create and mint NFTs from files
+- Store files on IPFS using Pinata
+- Smart contract integration with Ethereum
+- Time-based access control for NFTs
 
 ## Setup
 
@@ -15,44 +16,38 @@ This project allows you to convert any file into an NFT using NestJS, Solidity, 
 npm install
 ```
 
-2. Start Ganache and make sure it's running on http://127.0.0.1:8545
+2. Configure environment variables in `.env`:
+```
+PINATA_API_KEY=your_pinata_api_key
+PINATA_SECRET_KEY=your_pinata_secret_key
+ETHEREUM_PRIVATE_KEY=your_ethereum_private_key
+GANACHE_URL=http://127.0.0.1:7545
+CONTRACT_ADDRESS=your_contract_address
+```
 
-3. Deploy the smart contract:
-   - Compile the contract in the `contracts` directory
-   - Deploy it to Ganache using the provided private key
-   - Update the contract address in `src/nft/nft.service.ts`
-
-4. Start the NestJS application:
+3. Start the development server:
 ```bash
 npm run start:dev
 ```
 
-## Usage
-
-The application exposes a single endpoint:
+## API Endpoints
 
 ### Create NFT
-```bash
-POST http://localhost:3000/nft/create
-Content-Type: multipart/form-data
+- **POST** `/nft/create`
+- **Body**: 
+  - `file`: File to convert to NFT
+  - `recipientAddress`: Ethereum address of the recipient
 
-file: <your-file>
-recipientAddress: <ethereum-address>
-```
+## Smart Contracts
 
-This endpoint will:
-1. Upload your file to IPFS using NFT.Storage
-2. Create an NFT on the Ganache blockchain
-3. Return the token ID and IPFS URL
+The project includes the following smart contracts:
+- `FileNFT.sol`: Main NFT contract for file tokenization
+- Additional contracts for access control and time-based permissions
 
-## Environment Variables
+## Technologies Used
 
-The following environment variables are used:
-- NFT_STORAGE_TOKEN: Your NFT.Storage API token
-- GANACHE_PRIVATE_KEY: Your Ganache account private key
-
-## Security Notes
-
-- Never commit your private keys or API tokens
-- The provided private key is for development only
-- In production, use environment variables for sensitive data 
+- NestJS
+- Ethereum/Solidity
+- IPFS/Pinata
+- TypeScript
+- Hardhat
