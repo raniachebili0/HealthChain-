@@ -21,6 +21,11 @@ Thumbs.db
 # Temporary files
 /temp
 
+# Build files
+/artifacts
+/cache
+/typechain-types
+
 # Flutter/Dart specific
 .dart_tool/
 .flutter-plugins
