@@ -63,9 +63,39 @@ class UserService {
     }
   }
 
-  Future<void> uploadFile(
-    File? filePath,
-  ) async {
+  Future<Map<String, dynamic>> getuserbyidinfo(String userId) async {
+    try {
+      String? token = await storage.read(key: "auth_token");
+      if (token == null) {
+        print("No auth token found");
+        return {"error": "No authentication token found"};
+      }
+
+      final response = await http.get(
+        Uri.parse("$baseUrl/getuserinfo/$userId"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json", // Ensure proper JSON handling
+        },
+      );
+
+      print("Response received with status code: ${response.statusCode}");
+
+      final responseData = jsonDecode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print(" ${responseData}");
+        // Assuming the "data" key holds a list of doctors:
+        return Map<String, dynamic>.from(responseData);
+      } else {
+        print("Failed  ${responseData}");
+        return {}; // Return an empty list if failed
+      }
+    } catch (e) {
+      return {"error": "Error: $e"};
+    }
+  }
+
+  Future<void> uploadFile(File? filePath,) async {
     if (filePath == null) return;
 
     final uri = Uri.parse(

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:health_chain/routes/app_router.dart';
+import 'package:health_chain/services/document_service.dart';
 import 'package:health_chain/utils/colors.dart';
 import 'package:health_chain/widgets/FileCategoryCard.dart';
 import 'package:health_chain/widgets/see_file_item.dart';
@@ -11,6 +12,7 @@ class GetionDocumentScrenn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final MedicalRecordsService medicalRecordsService = MedicalRecordsService();
     return Scaffold(
       appBar: AppBar(
         actions: [
@@ -57,39 +59,38 @@ class GetionDocumentScrenn extends StatelessWidget {
                   // Handle search text changes
                 },
               ),
-              DoctorSeeFileCard(
-                  filetitle: 'irm',
-                  dateaccess: 'rfrf',
-                  usermail: 'rania@glaim.vom'),
-              DoctorSeeFileCard(
-                  filetitle: 'analyse',
-                  dateaccess: 'rfrf',
-                  usermail: 'sabrina@gmail.com'),
-
-              // FutureBuilder<List<Map<String, dynamic>>>(
-              //   future: ************,
-              //   builder: (context, snapshot) {
-              //     if (snapshot.connectionState == ConnectionState.waiting) {
-              //       return Center(child: CircularProgressIndicator());
-              //     } else if (snapshot.hasError) {
-              //       return Center(child: Text("Error: ${snapshot.error}"));
-              //     } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              //       return Center(child: Text("No doctors found"));
-              //     } else {
-              //       final files = snapshot.data!;
-              //       return Expanded(
-              //         child: ListView.builder(
-              //           scrollDirection: Axis.vertical,
-              //           itemCount: files.length,
-              //           itemBuilder: (context, index) {
-              //             final file = files[index];
-              //             return FileCategoryCard(doctor: files);
-              //           },
-              //         ),
-              //       );
-              //     }
-              //   },
-              // ),
+              Expanded(
+                child: FutureBuilder<List<dynamic>>(
+                  future: medicalRecordsService.getAccessFilesList(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(child: CircularProgressIndicator());
+                    } else if (snapshot.hasError) {
+                      return Center(child: Text("Error: ${snapshot.error}"));
+                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return Center(child: Text("No doctors found"));
+                    } else {
+                      final files = snapshot.data!;
+                      return Expanded(
+                        child: ListView.builder(
+                          scrollDirection: Axis.vertical,
+                          itemCount: files.length,
+                          itemBuilder: (context, index) {
+                            final file = files[index];
+                            return DoctorSeeFileCard(
+                              fileid: file['_id'],
+                              filetitle: file['fileName'],
+                              dateaccess: file['DebuitAccessDate'],
+                              user: file['patient'],
+                              fileurl: file['fileUrl'],
+                            );
+                          },
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ),
             ],
           ),
         ),

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -7,8 +8,11 @@ import 'package:health_chain/services/user_service.dart';
 import 'package:health_chain/utils/colors.dart';
 import 'package:health_chain/widgets/FileCategoryCard.dart';
 import 'package:health_chain/widgets/see_file_item.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 import '../../services/document_service.dart';
 
@@ -129,27 +133,22 @@ void _showFileActions(BuildContext context, dynamic file) {
         child: Wrap(
           children: [
             ListTile(
-              leading: Icon(Icons.visibility),
-              title: Text('View File'),
-              onTap: () async {
-                Navigator.pop(context);
-                try {
+                leading: Icon(Icons.visibility),
+                title: Text('View File'),
+                onTap: () async {
+                  Navigator.pop(context);
+
+                  final url = file['fileUrl'];
+                  final fileName = file['fileName'] ?? 'downloaded_file.pdf';
+
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => FileViewerScreen(
-                        fileUrl: file['fileUrl'],
-                        fileName: file['fileName'] ?? 'Unnamed File',
-                      ),
+                      builder: (context) =>
+                          SfPdfViewerPage(url: file['fileUrl']),
                     ),
                   );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error viewing file: $e')),
-                  );
-                }
-              },
-            ),
+                }),
             ListTile(
               leading: Icon(Icons.edit),
               title: Text('Give file access'),
@@ -216,25 +215,16 @@ void _confirmDelete(BuildContext context, dynamic file) {
   );
 }
 
-class FileViewerScreen extends StatelessWidget {
-  final String fileUrl;
-  final String fileName;
+class SfPdfViewerPage extends StatelessWidget {
+  final String url;
 
-  const FileViewerScreen({
-    super.key,
-    required this.fileUrl,
-    required this.fileName,
-  });
+  const SfPdfViewerPage({super.key, required this.url});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(fileName)),
-      body: InAppWebView(
-        initialUrlRequest: URLRequest(
-          url: WebUri(fileUrl), // ✅ FIX: use WebUri instead of Uri.parse
-        ),
-      ),
+      appBar: AppBar(title: Text("Preview PDF")),
+      body: SfPdfViewer.network(url),
     );
   }
 }

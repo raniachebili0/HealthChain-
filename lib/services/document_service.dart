@@ -76,6 +76,27 @@ class MedicalRecordsService extends ChangeNotifier {
     }
   }
 
+  Future<List<dynamic>> getAccessFilesList() async {
+    try {
+      String? authToken = await getAuthToken();
+      if (authToken == null) throw Exception("Authentication token is missing");
+      var response = await http.get(
+        Uri.parse('$baseUrl/getAccessfiles'),
+        headers: {
+          'Authorization': 'Bearer $authToken',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to load files list');
+      }
+    } catch (e) {
+      throw Exception('Error fetching files: $e');
+    }
+  }
+
   Future<String> viewFile(String fileId) async {
     try {
       String? authToken = await getAuthToken();
