@@ -32,3 +32,5 @@ export type { Strings } from "./@openzeppelin/contracts/utils/Strings";
 export { Strings__factory } from "./factories/@openzeppelin/contracts/utils/Strings__factory";
 export type { FileNFT } from "./contracts/FileNFT";
 export { FileNFT__factory } from "./factories/contracts/FileNFT__factory";
+export type { NFTTimeAccess } from "./contracts/NFTTimeAccess";
+export { NFTTimeAccess__factory } from "./factories/contracts/NFTTimeAccess__factory";

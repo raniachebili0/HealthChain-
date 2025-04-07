@@ -65,6 +65,10 @@ declare module "hardhat/types/runtime" {
       name: "FileNFT",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.FileNFT__factory>;
+    getContractFactory(
+      name: "NFTTimeAccess",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.NFTTimeAccess__factory>;
 
     getContractAt(
       name: "Ownable",
@@ -131,6 +135,11 @@ declare module "hardhat/types/runtime" {
       address: string | ethers.Addressable,
       signer?: ethers.Signer
     ): Promise<Contracts.FileNFT>;
+    getContractAt(
+      name: "NFTTimeAccess",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.NFTTimeAccess>;
 
     deployContract(
       name: "Ownable",
@@ -184,6 +193,10 @@ declare module "hardhat/types/runtime" {
       name: "FileNFT",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.FileNFT>;
+    deployContract(
+      name: "NFTTimeAccess",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.NFTTimeAccess>;
 
     deployContract(
       name: "Ownable",
@@ -250,6 +263,11 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.FileNFT>;
+    deployContract(
+      name: "NFTTimeAccess",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.NFTTimeAccess>;
 
     // default types
     getContractFactory(

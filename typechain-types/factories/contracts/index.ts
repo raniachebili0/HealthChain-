@@ -2,3 +2,4 @@
 /* tslint:disable */
 /* eslint-disable */
 export { FileNFT__factory } from "./FileNFT__factory";
+export { NFTTimeAccess__factory } from "./NFTTimeAccess__factory";

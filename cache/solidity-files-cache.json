@@ -609,6 +609,45 @@
       "artifacts": [
         "IERC721Receiver"
       ]
+    },
+    "C:\\Users\\HP\\Desktop\\2\\contracts\\NFTTimeAccess.sol": {
+      "lastModificationDate": 1744014462292,
+      "contentHash": "8e26fc2ec4e57556c9f4a82882aa1ff1",
+      "sourceName": "contracts/NFTTimeAccess.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/token/ERC721/IERC721.sol",
+        "@openzeppelin/contracts/access/Ownable.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "NFTTimeAccess"
+      ]
     }
   }
 }
