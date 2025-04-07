@@ -4,6 +4,7 @@ import 'package:health_chain/Screens/auth/register/Validation_du_compte.dart';
 import 'package:health_chain/Screens/core/file_picker_view.dart';
 import 'package:health_chain/Screens/auth/register/inscriptionScreen/inscription_view.dart';
 import 'package:health_chain/Screens/auth/register/profile_img_view.dart';
+import 'package:health_chain/Screens/core/medical_assistant_chat_screen.dart';
 import 'package:health_chain/Screens/onboarding/Onboarding.dart';
 
 import '../Screens/auth/register/signupForm/user_form_view.dart';
@@ -30,6 +31,7 @@ class AppRoutes {
   static const String rdvScreen = '/rdv_screen';
   static const String doctorFormView = '/doctor_form_view';
   static const String doctorsListScreen = '/doctors_list_screen';
+  static const String medicalChatScreen = '/medical_chat_screen';
    static const String doctormainScreen = '/main_screnn_doctor';
   // Add more route names here
 
@@ -49,6 +51,7 @@ class AppRoutes {
     rdvScreen: (context) => RdvScreen(),
     doctorFormView: (context) => DoctorFormView(),
     doctormainScreen: (context) => DoctorBottomNavBar(),
+    medicalChatScreen: (context) =>  MedicalAssistantChatScreen(),
     
     // Add more routes here
   };

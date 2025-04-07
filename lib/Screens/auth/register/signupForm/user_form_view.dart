@@ -125,7 +125,7 @@ class UserFormView extends StatelessWidget {
                             Padding(
                               padding: EdgeInsets.only(bottom: 10.h),
                               child: Text(
-                                'At least 8 characters that contain an uppercase letter, a number and a special character',
+                                'At least 8 characters that contain an uppercase letter, lowercase letter , a number and a special character',
                                 style: TextStyle(
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.w500,

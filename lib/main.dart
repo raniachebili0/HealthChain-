@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:health_chain/Screens/auth/register/signupForm/doctor_form_view_model.dart';
 import 'package:health_chain/Screens/auth/loginScreen/login_view_model.dart';
 import 'package:health_chain/Screens/auth/register/inscriptionScreen/inscription_view_model.dart';
+import 'package:health_chain/Screens/core/home_screen.dart';
 import 'package:health_chain/models/SharedData.dart';
 import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/services/auth_service.dart';
@@ -49,7 +50,7 @@ class MyApp extends StatelessWidget {
       // Use builder only if you need to use library outside ScreenUtilInit context
       builder: (_, child) {
         return MaterialApp(
-           initialRoute: AppRoutes.login,
+        // initialRoute: AppRoutes.login,
           routes: AppRoutes.routes,
           debugShowCheckedModeBanner: false,
           title: 'First Method',
@@ -61,7 +62,7 @@ class MyApp extends StatelessWidget {
           home: child,
         );
       },
-     // child: BottomNavBar(),
+      child: BottomNavBar(),
     );
   }
 }

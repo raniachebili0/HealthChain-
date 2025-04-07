@@ -61,7 +61,7 @@ class UserFormViewModel extends ChangeNotifier {
       return "Please enter a password";
     } else if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$')
         .hasMatch(text)) {
-      return "Please enter a valid phone number password";
+      return "Please enter a valid password";
     }
     return "";
   }
