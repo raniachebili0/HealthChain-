@@ -6,6 +6,7 @@
 
 #include "generated_plugin_registrant.h"
 
+<<<<<<< HEAD
 #include <file_selector_windows/file_selector_windows.h>
 #include <flutter_secure_storage_windows/flutter_secure_storage_windows_plugin.h>
 #include <pdfx/pdfx_plugin.h>
@@ -17,4 +18,8 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("FlutterSecureStorageWindowsPlugin"));
   PdfxPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("PdfxPlugin"));
+=======
+
+void RegisterPlugins(flutter::PluginRegistry* registry) {
+>>>>>>> origin/roua
 }
