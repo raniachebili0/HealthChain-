@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:health_chain/Screens/auth/loginScreen/login_view_model.dart';
 import 'package:health_chain/routes/app_router.dart';
+import 'package:health_chain/utils/colors.dart';
 import 'package:health_chain/widgets/button.dart';
 import 'package:health_chain/widgets/textField.dart';
 import 'package:provider/provider.dart';
@@ -113,7 +114,11 @@ class LoginScreen extends StatelessWidget {
                           ),
                           Spacer(),
                           // SizedBox(height: 37.h),
-                          MyButton(
+                          loginViewModel.isLoading
+                          ? CircularProgressIndicator(
+                              color: AppColors.primaryColor,
+                            )
+                          : MyButton(
                             buttonFunction: () {
                               print("Button clicked");
                               loginViewModel.buttonAction(

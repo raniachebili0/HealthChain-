@@ -1,13 +1,11 @@
 import 'dart:convert';
-
 import 'package:http/http.dart' as http;
+import 'package:health_chain/config/app_config.dart';
 
 class UserService {
-  final String baseUrl = "http://192.168.1.18:3000/users";
-
   Future<List<Map<String, dynamic>>> getAllDoctors() async {
     try {
-      final response = await http.get(Uri.parse("$baseUrl/doctors"));
+      final response = await http.get(Uri.parse(AppConfig.doctorsUrl));
 
       print("Response received with status code: ${response.statusCode}");
 
@@ -29,7 +27,7 @@ class UserService {
 
   Future<Map<String, dynamic>> getuserbyid() async {
     try {
-      final response = await http.get(Uri.parse("$baseUrl/getbyId"));
+      final response = await http.get(Uri.parse(AppConfig.getUserByIdUrl));
 
       print("Response received with status code: ${response.statusCode}");
 

@@ -1,16 +1,13 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-
 import 'dart:io';
-
-import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/utils/themes.dart';
 import 'package:health_chain/widgets/appBar.dart';
 import 'package:health_chain/widgets/button.dart';
 import 'package:open_filex/open_filex.dart';
-import 'package:pdfx/pdfx.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 class FilePickerScreen extends StatefulWidget {
   @override
@@ -19,7 +16,7 @@ class FilePickerScreen extends StatefulWidget {
 
 class _FilePickerScreenState extends State<FilePickerScreen> {
   String? pdfPath;
-  PdfController? pdfController;
+  final GlobalKey<SfPdfViewerState> _pdfViewerKey = GlobalKey();
 
   Future<void> pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -30,7 +27,6 @@ class _FilePickerScreenState extends State<FilePickerScreen> {
     if (result != null && result.files.single.path != null) {
       setState(() {
         pdfPath = result.files.single.path!;
-        pdfController = PdfController(document: PdfDocument.openFile(pdfPath!));
       });
     } else {
       print("No file selected");
@@ -72,7 +68,10 @@ class _FilePickerScreenState extends State<FilePickerScreen> {
                         SizedBox(
                           height: 300,
                           child: pdfPath != null && File(pdfPath!).existsSync()
-                              ? PdfView(controller: pdfController!)
+                              ? SfPdfViewer.file(
+                                  File(pdfPath!),
+                                  key: _pdfViewerKey,
+                                )
                               : Container(
                                   decoration: BoxDecoration(
                                     color: Colors.white30,

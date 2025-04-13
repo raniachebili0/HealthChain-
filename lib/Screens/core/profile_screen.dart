@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:health_chain/config/app_config.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -21,7 +22,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     ClipOval(
                       child: Image.network(
-                        "http://192.168.1.18:3000/uploads/your-image.jpg",
+                        "${AppConfig.uploadsUrl}/your-image.jpg",
                         width: 100, // Set width
                         height: 100, // Set height
                         fit: BoxFit.cover, // Ensures the image fills the circle

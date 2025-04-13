@@ -1,21 +1,24 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:health_chain/config/app_config.dart';
 
 class AuthService {
-  final String baseUrl = "http://192.168.1.18:3000/auth";
   final storage = FlutterSecureStorage();
 
   // Step 1: Send OTP
   Future<Map<String, dynamic>> sendOtp(String email) async {
     try {
       print("sendOtp function called with email: $email");
+      final sendOtpUrl = AppConfig.sendOtpUrl.replaceAll(":3000", ":3001");
+      print("Using sendOtp URL: $sendOtpUrl");
 
       final response = await http.post(
-        Uri.parse("$baseUrl/sendOtp"),
+        Uri.parse(sendOtpUrl),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"email": email}),
       );
@@ -41,9 +44,11 @@ class AuthService {
   Future<String> verifyOtp(String email, String otp) async {
     try {
       print("verifyOtp function called with email: $email and otp: $otp");
+      final verifyOtpUrl = AppConfig.verifyOtpUrl.replaceAll(":3000", ":3001");
+      print("Using verifyOtp URL: $verifyOtpUrl");
 
       final response = await http.post(
-        Uri.parse("$baseUrl/verify-otp"),
+        Uri.parse(verifyOtpUrl),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"email": email, "otp": otp}),
       );
@@ -78,6 +83,9 @@ class AuthService {
       String? doctorId,
       String? doctorspecility}) async {
     try {
+      final signupUrl = AppConfig.signupUrl.replaceAll(":3000", ":3001");
+      print("Using signup URL: $signupUrl");
+      
       // ✅ Construire l'objet JSON pour `signupData`
       final Map<String, dynamic> signupData = {
         "email": email,
@@ -93,8 +101,7 @@ class AuthService {
 
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse(
-            'http://192.168.1.18:3000/auth/signup'), // Adjust for emulator
+        Uri.parse(signupUrl),
       );
 
       // ✅ Ajouter les données JSON comme champ de formulaire
@@ -132,43 +139,75 @@ class AuthService {
   // Step 4: Login User
   Future<String> login(String email, String password) async {
     try {
+      final loginUrl = AppConfig.loginUrl.replaceAll(":3000", ":3001");
+      print("Sending login request for email: $email to $loginUrl");
+      
       final response = await http.post(
-        Uri.parse("$baseUrl/login"),
+        Uri.parse(loginUrl),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"email": email, "password": password}),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print("Login request timed out after 10 seconds");
+          throw TimeoutException("Connection timed out. Please check your server.");
+        },
       );
 
       print("Response received with status code: ${response.statusCode}");
 
-      // Log the full response body for debugging
-      final responseData = jsonDecode(response.body);
-      print("Response body: $responseData");
+      try {
+        // Log the full response body for debugging
+        final responseData = jsonDecode(response.body);
+        print("Response body: $responseData");
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        // Successful login, handle the tokens and user data
-        String accessToken = responseData["accessToken"];
-        String refreshToken = responseData["refreshToken"];
-        String userId = responseData["userId"];
-        String role = responseData["role"];
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          // Successful login, handle the tokens and user data
+          if (responseData.containsKey("accessToken") && 
+              responseData.containsKey("userId")) {
+            
+            String accessToken = responseData["accessToken"];
+            String refreshToken = responseData["refreshToken"];
+            String userId = responseData["userId"];
+            String role = responseData["role"];
 
-        await storage.write(key: "auth_token", value: accessToken);
-        print("Login successful, access token: $accessToken");
-
-        return "Login successful";
-      } else {
-        // Log the error message in case of failure
-        print("Login failed: ${responseData['message'] ?? responseData}");
-        return "Error: ${responseData['message'] ?? responseData}";
+            print("Login successful for user: $userId with role: $role");
+            
+            await storage.write(key: "auth_token", value: accessToken);
+            await storage.write(key: "user_id", value: userId);
+            await storage.write(key: "user_role", value: role);
+            
+            print("Tokens stored in secure storage");
+            
+            return "Login successful";
+          } else {
+            print("Missing required fields in response: $responseData");
+            return "Error: Incomplete response from server";
+          }
+        } else {
+          // Log the error message in case of failure
+          print("Login failed: ${responseData['message'] ?? responseData}");
+          return "Error: ${responseData['message'] ?? "Login failed"}";
+        }
+      } catch (e) {
+        // Handle JSON parsing errors
+        print("Error parsing response: $e");
+        print("Raw response: ${response.body}");
+        return "Error: Unable to process server response";
       }
+    } on TimeoutException catch (e) {
+      print("Timeout exception: $e");
+      return "Error: Server connection timed out. Please try again later.";
     } catch (e) {
-      print("Error during login: $e");
-      return "Error during login: $e";
+      print("Exception during login: $e");
+      return "Error: Connection problem. Please check your internet connection";
     }
   }
 
   // Logout
   Future<void> logout() async {
-    //String? token = await storage.read(key: "auth_token");
     await storage.delete(key: "auth_token");
+    await storage.delete(key: "user_id");
+    await storage.delete(key: "user_role");
   }
 }

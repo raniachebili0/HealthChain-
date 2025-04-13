@@ -84,24 +84,21 @@ class _OutlineBorderTextFormField extends State<OutlineBorderTextFormField> {
             textInputAction: widget.textInputAction,
             inputFormatters: [LengthLimitingTextInputFormatter(100)],
             validator: (string) {
-              if (widget
-                  .validation(widget.tempTextEditingController.text)
-                  .toString()
-                  .isNotEmpty) {
+              final validationResult = widget.validation(widget.tempTextEditingController.text);
+              
+              if (validationResult != null && validationResult.toString().isNotEmpty) {
                 setState(() {
                   isError = true;
-                  errorString =
-                      widget.validation(widget.tempTextEditingController.text);
+                  errorString = validationResult.toString();
                 });
-                return "";
+                return ""; // Return empty string to trigger the validator but hide the default error
               } else {
                 setState(() {
                   isError = false;
-                  errorString =
-                      widget.validation(widget.tempTextEditingController.text);
+                  errorString = "";
                 });
+                return null; // Return null to indicate validation passed
               }
-              return null;
             },
             decoration: InputDecoration(
                 labelText: widget.labelText,

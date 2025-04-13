@@ -14,6 +14,8 @@ import '../Screens/core/home_screen.dart';
 import '../Screens/core/main_screen.dart';
 import '../Screens/core/notification_screen.dart';
 import '../Screens/core/rdv_screen.dart';
+import '../Screens/core/video_call_screen.dart';
+import '../Screens/core/audio_call_screen.dart';
 
 class AppRoutes {
   static const String validationDuCompte = '/validation-du-compte';
@@ -29,6 +31,8 @@ class AppRoutes {
   static const String homeScreen = '/home_screen';
   static const String srvicesScreen = '/srveces_screen';
   static const String doctorFormView = '/doctor_form_view';
+  static const String videoCall = '/video_call';
+  static const String audioCall = '/audio_call';
 
   // Add more route names here
 
@@ -46,6 +50,22 @@ class AppRoutes {
     homeScreen: (context) => HomeScreen(),
     srvicesScreen: (context) => RdvScreen(),
     doctorFormView: (context) => DoctorFormView(),
+    videoCall: (context) {
+      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+      return VideoCallScreen(
+        doctorId: args['doctorId'],
+        doctorName: args['doctorName'],
+        doctorAvatar: args['doctorAvatar'],
+      );
+    },
+    audioCall: (context) {
+      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+      return AudioCallScreen(
+        doctorId: args['doctorId'],
+        doctorName: args['doctorName'],
+        doctorAvatar: args['doctorAvatar'],
+      );
+    },
 
     // Add more routes here
   };
