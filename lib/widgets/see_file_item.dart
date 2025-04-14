@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -174,8 +175,7 @@ class DoctorSeeFileCard extends StatelessWidget {
                                   final accessFileId =
                                       fileid; // replace or pass dynamically
                                   final response = await http.patch(
-                                    Uri.parse(
-                                        'http://10.0.2.2:3000/medical-records/$accessFileId/description'),
+                                    Uri.parse('http://192.168.0.107:3000/medical-records/$accessFileId/description'),
                                     headers: {
                                       'Content-Type': 'application/json',
                                       // 'Authorization': 'Bearer your_token', // if needed

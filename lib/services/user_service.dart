@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:health_chain/services/UserRole.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:path/path.dart' as path;
+import 'package:flutter/foundation.dart';
 
 class UserService {
-  final String baseUrl = "http://10.0.2.2:3000/users";
+  final String baseUrl = "http://192.168.0.107:3000/users";
   final storage = FlutterSecureStorage();
 
   Future<List<Map<String, dynamic>>> getAllDoctors() async {
@@ -95,30 +97,31 @@ class UserService {
     }
   }
 
-  Future<void> uploadFile(File? filePath,) async {
-    if (filePath == null) return;
-
-    final uri = Uri.parse(
-        'http://10.0.2.2:3000/files/upload'); // Change the URL to your actual server endpoint
-    var request = http.MultipartRequest('POST', uri);
-    var pic = await http.MultipartFile.fromPath(
-      'file',
-      filePath!.path,
-    );
-    request.files.add(pic);
+  Future<bool> uploadFile(String userId, File file, String description) async {
+    if (file == null) return false;
 
     try {
+      final uploadUrl = 'http://192.168.0.107:3000/files/upload';
+      
+      var request = http.MultipartRequest('POST', Uri.parse(uploadUrl));
+      var pic = await http.MultipartFile.fromPath(
+        'file',
+        file.path,
+      );
+      request.files.add(pic);
+
       final response = await request.send();
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         print('File uploaded successfully');
-        // Handle successful response here
+        return true;
       } else {
         print('Failed to upload file');
-        // Handle failure here
+        return false;
       }
     } catch (e) {
       print('Error uploading file: $e');
+      return false;
     }
   }
 
@@ -144,12 +147,17 @@ class UserService {
     }
   }
 
-  Future<List<dynamic>> getAppointments(String token) async {
+  Future<List<dynamic>> getAppointments() async {
     try {
+      String? token = await storage.read(key: "auth_token");
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:3000/patient/appointments'),
+        Uri.parse('http://192.168.0.107:3000/patient/appointments'),
         headers: {
-          'Authorization': 'Bearer $token', // Include authentication token
+          'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
       );
@@ -164,9 +172,8 @@ class UserService {
     }
   }
 
-  Future<Map<String, dynamic>> createAppointment(
-      Map<String, dynamic> appointmentData) async {
-    final url = Uri.parse("http://10.0.2.2:3000/patient/appointment");
+  Future<String> createAppointment(Map<String, dynamic> appointmentData) async {
+    final url = Uri.parse("http://192.168.0.107:3000/patient/appointment");
     String? token = await storage.read(key: "auth_token");
     try {
       final response = await http.post(

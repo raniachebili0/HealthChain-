@@ -24,7 +24,7 @@ class FilePickerScreen extends StatefulWidget {
 class _FilePickerScreenState extends State<FilePickerScreen> {
   String? pdfPath;
   PdfController? pdfController;
-  final String baseUrl = 'http://10.0.2.2:3000/medical-records';
+  final String baseUrl = 'http://192.168.0.107:3000/medical-records';
   final storage = FlutterSecureStorage();
 
   Future<void> pickFile() async {

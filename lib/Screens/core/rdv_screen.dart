@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter/material.dart';
 import 'package:health_chain/services/user_service.dart';
 
 class RdvScreen extends StatefulWidget {
@@ -17,8 +16,7 @@ class _RdvScreenState extends State<RdvScreen> {
   @override
   void initState() {
     super.initState();
-    String token = "your-auth-token"; // Replace with actual token
-    futureAppointments = userService.getAppointments(token);
+    futureAppointments = userService.getAppointments();
   }
 
   @override

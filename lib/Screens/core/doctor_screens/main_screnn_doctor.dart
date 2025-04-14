@@ -8,6 +8,8 @@ import 'package:health_chain/Screens/core/doctor_screens/rdv_doctor_screen.dart'
 import 'package:health_chain/Screens/core/profile_screen.dart';
 import 'package:health_chain/Screens/core/rdv_screen.dart';
 import 'package:health_chain/utils/colors.dart';
+import 'package:health_chain/Screens/core/chat-screen.dart';
+import 'package:health_chain/Screens/core/conversation-screen.dart';
 
 class DoctorBottomNavBar extends StatefulWidget {
   const DoctorBottomNavBar({super.key});
@@ -22,7 +24,7 @@ class _DoctorBottomNavBarState extends State<DoctorBottomNavBar> {
   static List<Widget> PagesAll = <Widget>[
     RdvDoctorScreen(),
     GetionDocumentScrenn(),
-    ConsultationScreen(),
+    ConversationScreen(),
     DoctorProfileScreen(),
   ];
 

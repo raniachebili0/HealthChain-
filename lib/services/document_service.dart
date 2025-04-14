@@ -7,10 +7,11 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart';
 
 class MedicalRecordsService extends ChangeNotifier {
-  final String baseUrl = 'http://10.0.2.2:3000/medical-records';
   final storage = FlutterSecureStorage();
+  final String baseUrl = 'http://192.168.0.107:3000/medical-records';
 
   final _filesController = StreamController<List<dynamic>>.broadcast();
 

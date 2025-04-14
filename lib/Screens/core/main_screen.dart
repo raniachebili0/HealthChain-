@@ -4,8 +4,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:health_chain/Screens/core/profile_screen.dart';
 import 'package:health_chain/Screens/core/rdv_screen.dart';
 import 'package:health_chain/utils/colors.dart';
+import 'package:health_chain/Screens/core/chat-screen.dart';
+import 'package:health_chain/Screens/core/conversation-screen.dart';
 
-import 'convesations_screen.dart';
 import 'home_screen.dart';
 import 'documents_screen.dart';
 import 'notification_screen.dart';
@@ -24,7 +25,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
     HomeScreen(),
     DocumentsScreen(),
     RdvScreen(),
-    ConvesationsScreen(),
+    ConversationScreen(),
     ProfileScreen(),
   ];
 

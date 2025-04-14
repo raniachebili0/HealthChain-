@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:health_chain/Screens/auth/loginScreen/login_view.dart';
 import 'package:health_chain/Screens/auth/register/Validation_du_compte.dart';
 import 'package:health_chain/Screens/core/chat-screen.dart';
+import 'package:health_chain/Screens/core/conversation-screen.dart';
 import 'package:health_chain/Screens/core/docter_detailles_screnn.dart';
 import 'package:health_chain/Screens/core/doctor_screens/main_screnn_doctor.dart';
 import 'package:health_chain/Screens/core/doctors_list_screen.dart';
@@ -42,6 +43,7 @@ class AppRoutes {
   static const String doctorFormView = '/doctor_form_view';
   static const String doctorsListScreen = '/doctors_list_screen';
   static const String chatScreen = '/chat-screen';
+  static const String conversationScreen = '/conversation-screen';
 
   static Map<String, WidgetBuilder> routes = {
     onboarding: (context) => OnBoard(),
@@ -60,5 +62,6 @@ class AppRoutes {
     mainScreen: (context) => BottomNavBar(),
     doctormainScreen: (context) => DoctorBottomNavBar(),
     chatScreen: (context) => ChatScreen(),
+    conversationScreen: (context) => ConversationScreen(),
   };
 }
