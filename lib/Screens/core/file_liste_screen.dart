@@ -2,12 +2,14 @@ import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:health_chain/Screens/core/file_picker_view.dart';
 import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/services/document_service.dart';
 import 'package:health_chain/services/user_service.dart';
 import 'package:health_chain/utils/colors.dart';
 import 'package:health_chain/widgets/FileCategoryCard.dart';
 import 'package:health_chain/widgets/see_file_item.dart';
+import 'package:mime/mime.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
@@ -111,7 +113,12 @@ class _FileListeScreenState extends State<FileListeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.pushNamed(context, AppRoutes.filePickerScreen);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FilePickerScreen(category: widget.category),
+            ),
+          );
         },
         backgroundColor: Colors.blue,
         child: Icon(Icons.add),
@@ -220,11 +227,41 @@ class SfPdfViewerPage extends StatelessWidget {
 
   const SfPdfViewerPage({super.key, required this.url});
 
+  bool isImageFile(String path) {
+    final mimeType = lookupMimeType(path);
+    return mimeType != null && mimeType.startsWith('image/');
+  }
+
+  bool isPdfFile(String path) {
+    final mimeType = lookupMimeType(path);
+    return mimeType != null && mimeType == 'application/pdf';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isImage = isImageFile(url);
+    final isPdf = isPdfFile(url);
+
     return Scaffold(
-      appBar: AppBar(title: Text("Preview PDF")),
-      body: SfPdfViewer.network(url),
+      appBar: AppBar(title: Text("Preview")),
+      body: isPdf
+          ? SfPdfViewer.network(url)
+          : isImage
+              ? InteractiveViewer(
+                  child: Center(
+                    child: Image.network(
+                      url,
+                      errorBuilder: (context, error, stackTrace) =>
+                          Text("Failed to load image"),
+                    ),
+                  ),
+                )
+              : Center(
+                  child: Text(
+                    "Unsupported file format.",
+                    style: TextStyle(fontSize: 18, color: Colors.red),
+                  ),
+                ),
     );
   }
 }

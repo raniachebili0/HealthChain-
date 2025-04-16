@@ -80,7 +80,8 @@ class GetionDocumentScrenn extends StatelessWidget {
                             return DoctorSeeFileCard(
                               fileid: file['_id'],
                               filetitle: file['fileName'],
-                              dateaccess: file['DebuitAccessDate'],
+                              startdateaccess: file['DebuitAccessDate'],
+                              enddateaccess: file['FinAccessDate'],
                               user: file['patient'],
                               fileurl: file['fileUrl'],
                             );

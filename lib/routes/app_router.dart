@@ -49,7 +49,6 @@ class AppRoutes {
     inscription: (context) => InscriptionScreen(),
     validationDuCompte: (context) => ValidationDuCompte(),
     userFormView: (context) => UserFormView(),
-    filePickerScreen: (context) => FilePickerScreen(),
     imagePickerScreen: (context) => ImagePickerScreen(),
     documentScreen: (context) => DocumentsScreen(),
     notificationScreen: (context) => NotificationScreen(),

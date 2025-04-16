@@ -17,6 +17,10 @@ import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
 
 class FilePickerScreen extends StatefulWidget {
+  final String category;
+
+  const FilePickerScreen({super.key, required this.category});
+
   @override
   _FilePickerScreenState createState() => _FilePickerScreenState();
 }
@@ -30,7 +34,7 @@ class _FilePickerScreenState extends State<FilePickerScreen> {
   Future<void> pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['pdf'], // Only allow PDFs
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'], // Only allow PDFs
     );
 
     if (result != null && result.files.single.path != null) {
@@ -80,7 +84,7 @@ class _FilePickerScreenState extends State<FilePickerScreen> {
   void buttonAction(BuildContext context, String? pdfPath) async {
     if (pdfPath != null && File(pdfPath).existsSync()) {
       try {
-        await uploadFile(File(pdfPath), "observation");
+        await uploadFile(File(pdfPath), widget.category);
 
         // Show success alert dialog
         showDialog(
