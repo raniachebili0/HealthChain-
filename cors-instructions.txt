@@ -1,0 +1,36 @@
+// Instructions for enabling CORS on your NestJS server
+
+1. Open the main.ts file in your NestJS backend project and add the following:
+
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  
+  // Enable CORS for all origins
+  app.enableCors({
+    origin: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+  });
+  
+  await app.listen(3001);
+}
+bootstrap();
+
+2. Alternatively, you can use the NestJS @nestjs/platform-express package and apply CORS middleware:
+
+import * as cors from 'cors';
+
+app.use(cors());
+
+3. For specific origins only, specify them:
+
+app.enableCors({
+  origin: ['http://localhost:8080', 'http://127.0.0.1:8080'],
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+  credentials: true,
+});
+
+4. After making these changes, restart your NestJS server. 
