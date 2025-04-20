@@ -5,7 +5,7 @@ import 'package:health_chain/services/UserRole.dart';
 import 'package:http/http.dart' as http;
 
 class UserService {
-  final String baseUrl = "http://10.0.2.2:3000/users";
+  final String baseUrl = "http://127.0.0.1:3000/users";
   final storage = FlutterSecureStorage();
 
   Future<List<Map<String, dynamic>>> getAllDoctors() async {
@@ -62,7 +62,7 @@ class UserService {
     }
   }
 
-   Future<List<dynamic>> getAppointments(String token) async {
+  Future<List<dynamic>> getAppointments(String token) async {
     try {
       final response = await http.get(
         Uri.parse('http://127.0.0.1:3000/patient/appointments'),
@@ -84,7 +84,7 @@ class UserService {
 
   Future<Map<String, dynamic>> createAppointment(
       Map<String, dynamic> appointmentData) async {
-    final url = Uri.parse("http://127.0.0.1:3000/patient/appointment'");
+    final url = Uri.parse("http://127.0.0.1:3000/patient/appointment");
     String? token = await storage.read(key: "auth_token");
     try {
       final response = await http.post(
@@ -105,4 +105,8 @@ class UserService {
       throw Exception("Error: $e");
     }
   }
+
+  // Future<List> getPractitionerAppointments(String token) {
+  //   return ;
+  // }
 }

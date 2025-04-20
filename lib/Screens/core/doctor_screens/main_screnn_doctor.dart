@@ -6,7 +6,7 @@ import 'package:health_chain/Screens/core/doctor_screens/doctor_profile_screen.d
 import 'package:health_chain/Screens/core/doctor_screens/getion_document_screnn.dart';
 import 'package:health_chain/Screens/core/doctor_screens/rdv_doctor_screen.dart';
 import 'package:health_chain/Screens/core/profile_screen.dart';
-import 'package:health_chain/Screens/core/rdv_screen.dart';
+import 'package:health_chain/Screens/core/Appointment/rdv_screen.dart';
 import 'package:health_chain/utils/colors.dart';
 
 class DoctorBottomNavBar extends StatefulWidget {

@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/services/doctor_service.dart';
 import 'package:health_chain/widgets/doctor_item.dart';
 
@@ -148,9 +149,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   scrollDirection: Axis.horizontal,
                   itemCount: doctors.length,
                   itemBuilder: (context, index) {
-                    final doctor = doctors[index];
-                    return DoctorCard(doctor: doctor);
-                  },
+  final doctor = doctors[index];
+  return GestureDetector(
+    onTap: () {
+      Navigator.pushNamed(
+        context,
+        AppRoutes.doctorDetailsScreen,
+        arguments: doctor, // on passe les infos du docteur
+      );
+    },
+    child: DoctorCard(doctor: doctor), // ton widget existant
+  );
+},
+
                 );
               }
             },

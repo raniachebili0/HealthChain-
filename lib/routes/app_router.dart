@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:health_chain/Screens/auth/loginScreen/login_view.dart';
 import 'package:health_chain/Screens/auth/register/Validation_du_compte.dart';
+import 'package:health_chain/Screens/core/Appointment/AddApointment.dart';
+import 'package:health_chain/Screens/core/Appointment/doctor_details_page.dart';
 import 'package:health_chain/Screens/core/file_picker_view.dart';
 import 'package:health_chain/Screens/auth/register/inscriptionScreen/inscription_view.dart';
 import 'package:health_chain/Screens/auth/register/profile_img_view.dart';
-import 'package:health_chain/Screens/core/medical_assistant_chat_screen.dart';
+import 'package:health_chain/Screens/core/Appointment/medical_assistant_chat_screen.dart';
 import 'package:health_chain/Screens/onboarding/Onboarding.dart';
 
 import '../Screens/auth/register/signupForm/user_form_view.dart';
@@ -14,7 +16,7 @@ import '../Screens/core/documents_screen.dart';
 import '../Screens/core/home_screen.dart';
 import '../Screens/core/main_screen.dart';
 import '../Screens/core/notification_screen.dart';
-import '../Screens/core/rdv_screen.dart';
+import '../Screens/core/Appointment/rdv_screen.dart';
 
 class AppRoutes {
   static const String validationDuCompte = '/validation-du-compte';
@@ -32,7 +34,9 @@ class AppRoutes {
   static const String doctorFormView = '/doctor_form_view';
   static const String doctorsListScreen = '/doctors_list_screen';
   static const String medicalChatScreen = '/medical_chat_screen';
-   static const String doctormainScreen = '/main_screnn_doctor';
+  static const String doctormainScreen = '/main_screnn_doctor';
+  static const String doctorDetailsScreen = '/doctor_details_screen';
+ 
   // Add more route names here
 
   static Map<String, WidgetBuilder> routes = {
@@ -43,7 +47,7 @@ class AppRoutes {
     userFormView: (context) => const UserFormView(),
     filePickerScreen: (context) => FilePickerScreen(),
     imagePickerScreen: (context) => ImagePickerScreen(),
-    
+
     mainScreen: (context) => BottomNavBar(),
     documentScreen: (context) => DocumentsScreen(),
     notificationScreen: (context) => NotificationScreen(),
@@ -51,8 +55,15 @@ class AppRoutes {
     rdvScreen: (context) => RdvScreen(),
     doctorFormView: (context) => DoctorFormView(),
     doctormainScreen: (context) => DoctorBottomNavBar(),
-    medicalChatScreen: (context) =>  MedicalAssistantChatScreen(),
-    
+    medicalChatScreen: (context) => MedicalAssistantChatScreen(),
+    doctorDetailsScreen: (context) {
+      final doctor =
+          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+      return DoctorDetailsPage(doctor: doctor);
+    },
+   
+  
+
     // Add more routes here
   };
 }

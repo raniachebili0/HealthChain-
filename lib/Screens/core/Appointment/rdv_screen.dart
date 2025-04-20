@@ -1,17 +1,19 @@
-import 'package:flutter/cupertino.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter/material.dart';
+import 'package:health_chain/Screens/core/Appointment/medical_assistant_chat_screen.dart';
 import 'package:health_chain/services/user_service.dart';
 import 'package:health_chain/utils/colors.dart';
 
-class RdvDoctorScreen extends StatefulWidget {
-  const RdvDoctorScreen({super.key});
+class RdvScreen extends StatefulWidget {
+  const RdvScreen({super.key});
 
   @override
-  State<RdvDoctorScreen> createState() => _RdvDoctorScreenState();
+  State<RdvScreen> createState() => _RdvScreenState();
 }
 
-class _RdvDoctorScreenState extends State<RdvDoctorScreen> {
+class _RdvScreenState extends State<RdvScreen> {
   final UserService userService = UserService();
   late Future<List<dynamic>> futureAppointments;
 
@@ -22,7 +24,7 @@ class _RdvDoctorScreenState extends State<RdvDoctorScreen> {
   void initState() {
     super.initState();
     String token = "your-auth-token"; // Replace with actual token
-    // futureAppointments = userService.getPractitionerAppointments(token);
+    futureAppointments = userService.getAppointments(token);
   }
 
   @override
@@ -73,7 +75,23 @@ class _RdvDoctorScreenState extends State<RdvDoctorScreen> {
           ],
         ),
       ),
-      
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // When an appointment status is confirmed, navigate to the chat screen
+          if (selectedStatus == 'confirmed' && !isChatOpened) {
+             setState(() {
+              isChatOpened = true;
+            });
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const MedicalAssistantChatScreen()),
+            );
+          }
+        },
+        child: const Icon(Icons.chat),
+        backgroundColor: AppColors.primaryColor,
+      ),
     );
   }
 
@@ -184,3 +202,6 @@ class _RdvDoctorScreenState extends State<RdvDoctorScreen> {
 }
 
 }
+
+
+

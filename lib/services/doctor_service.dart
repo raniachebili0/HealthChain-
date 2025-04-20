@@ -3,11 +3,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class DoctorService {
-  final String baseUrl = "http://10.0.2.2:3000/users";
+  final String baseUrl = "http://127.0.0.1:3000/practitioners";
 
   Future<List<Map<String, dynamic>>> getAllDoctors() async {
     try {
-      final response = await http.get(Uri.parse("$baseUrl/doctors"));
+      final response = await http.get(Uri.parse("$baseUrl/fetch"));
 
       print("Response received with status code: ${response.statusCode}");
 

@@ -32,7 +32,7 @@ class DoctorCard extends StatelessWidget {
             borderRadius: const BorderRadius.all(
               Radius.circular(30),
             ),
-            child: doctor['photo'] != null && doctor['photo'].startsWith("http")
+            child: (doctor['photo'] != null && Uri.tryParse(doctor['photo'])?.hasAbsolutePath == true)
                 ? Image.network(
                     doctor['photo'],
                     width: double.infinity,
@@ -86,7 +86,7 @@ class DoctorCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  doctor['specialty'] ?? "Unknown Specialty",
+                  doctor['specialization'] ?? "Unknown Specialty",
                   style: const TextStyle(
                     fontSize: 14,
                     color: Colors.white70,
