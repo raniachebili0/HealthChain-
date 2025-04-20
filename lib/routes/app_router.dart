@@ -1,18 +1,13 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:health_chain/Screens/auth/loginScreen/login_view.dart';
 import 'package:health_chain/Screens/auth/register/Validation_du_compte.dart';
 import 'package:health_chain/Screens/core/chat-screen.dart';
-import 'package:health_chain/Screens/core/docter_detailles_screnn.dart';
 import 'package:health_chain/Screens/core/doctor_screens/main_screnn_doctor.dart';
 import 'package:health_chain/Screens/core/doctors_list_screen.dart';
-import 'package:health_chain/Screens/core/file_liste_screen.dart';
-import 'package:health_chain/Screens/core/file_picker_view.dart';
 import 'package:health_chain/Screens/auth/register/inscriptionScreen/inscription_view.dart';
 import 'package:health_chain/Screens/auth/register/profile_img_view.dart';
 import 'package:health_chain/Screens/onboarding/Onboarding.dart';
-import 'package:health_chain/services/UserRole.dart';
 
 import '../Screens/auth/register/signupForm/user_form_view.dart';
 import '../Screens/auth/register/signupForm/doctor_form_view.dart';
@@ -49,7 +44,6 @@ class AppRoutes {
     inscription: (context) => InscriptionScreen(),
     validationDuCompte: (context) => ValidationDuCompte(),
     userFormView: (context) => UserFormView(),
-    filePickerScreen: (context) => FilePickerScreen(),
     imagePickerScreen: (context) => ImagePickerScreen(),
     documentScreen: (context) => DocumentsScreen(),
     notificationScreen: (context) => NotificationScreen(),

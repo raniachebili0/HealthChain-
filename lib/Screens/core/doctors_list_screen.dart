@@ -1,10 +1,8 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:health_chain/Screens/core/docter_detailles_screnn.dart';
 import 'package:health_chain/services/user_service.dart';
 import 'package:health_chain/utils/colors.dart';
-import 'package:health_chain/widgets/doctor_item.dart';
 import 'package:health_chain/widgets/doctor_list_item.dart';
 
 class Doctorslistscreen extends StatefulWidget {

@@ -1,194 +1,270 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:health_chain/Screens/core/CreateAppointmentScreen.dart';
-import 'package:health_chain/utils/colors.dart';
-import 'package:health_chain/widgets/appBar.dart';
+import 'package:health_chain/services/document_service.dart';
+import 'package:provider/provider.dart';
+import 'package:health_chain/Screens/core/doctor_details_view_model.dart';
 
 class DoctorDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> doctor;
 
-  const DoctorDetailsScreen({super.key, required this.doctor});
+  const DoctorDetailsScreen({Key? key, required this.doctor}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => DoctorDetailsViewModel(doctor: doctor),
+      child: _DoctorDetailsView(),
+    );
+  }
+}
+
+class _DoctorDetailsView extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<DoctorDetailsViewModel>();
+
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Doctor Details'),
+      ),
       body: SafeArea(
-        child: Stack(
-          children: [
-            SingleChildScrollView(
-              child: Column(
-                children: [
-                  const CustomAppBar(appbartext: 'Doctor Profile'),
-                  Container(
-                    padding: EdgeInsets.only(bottom: 10),
-                    width: double.infinity,
-                    // height: 220.h,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(30),
-                        bottomRight: Radius.circular(30),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 8,
-                          offset: const Offset(2, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.max,
-                      children: [
-                        SizedBox(
-                            height: 150.h,
-                            width: 150.w,
-                            child: Hero(
-                              tag: doctor['photo'],
-                              child: doctor['photo'] != null &&
-                                      doctor['photo'].startsWith("http")
-                                  ? Image.network(
-                                      doctor['photo'],
-                                      // width: 100,
-                                      // height: 100,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) => Icon(
-                                              Icons.person,
-                                              size: 50,
-                                              color: Colors.grey.shade400),
-                                    )
-                                  : Image.asset(
-                                      'assets/images/Landing.png',
-                                      width: 100,
-                                      height: 100,
-                                      fit: BoxFit.cover,
-                                    ),
-                            )),
-                        SizedBox(height: 8.h),
-                        Text(
-                          "Dr. ${doctor['name']}" ?? "User Name",
-                          style: TextStyle(
-                            fontSize: 20.sp,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black54,
-                          ),
-                        ),
-                        SizedBox(height: 8.h),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.email, size: 18, color: Colors.black45),
-                            SizedBox(width: 5),
-                            Text(
-                              doctor['email'] ?? "User Email",
-                              style: TextStyle(
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black45),
-                            ),
-                            SizedBox(width: 15),
-                            Icon(Icons.phone, size: 18, color: Colors.black45),
-                            SizedBox(width: 5),
-                            Text(
-                              doctor['telecom'] ?? "User Tel",
-                              style: TextStyle(
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black45),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  _buildInfoCard(
-                      "Bio", doctor['doctorbio'] ?? "No bio available"),
-                  _buildInfoCard(
-                      "Address", doctor['address'] ?? "No address available"),
-                  _buildInfoCard("Schedules",
-                      doctor['doctorhoraire'] ?? "No schedules available"),
-                  SizedBox(
-                    height: 60.h,
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 18),
-                  child: Center(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => CreateAppointmentScreen(
-                                  doctorId: doctor['_id'])),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryColor,
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 60.h, vertical: 17.w),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: Text(
-                        'Book Appointment',
-                        style: TextStyle(color: Colors.white),
-                      ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Hero(
+                tag: 'doctor_photo_${viewModel.doctor['_id']}',
+                child: Container(
+                  height: 200,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: NetworkImage(viewModel.doctorPhoto),
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      viewModel.doctorName,
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      viewModel.doctorEmail,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      viewModel.doctorPhone,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInfoCard(
+                      context,
+                      'Bio',
+                      viewModel.doctorBio,
+                      Icons.person,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInfoCard(
+                      context,
+                      'Address',
+                      viewModel.doctorAddress,
+                      Icons.location_on,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInfoCard(
+                      context,
+                      'Schedules',
+                      viewModel.doctorSchedules,
+                      Icons.schedule,
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              return AppointmentFormDialog();
+                            },
+                          );
+                          // viewModel.navigateToCreateAppointment(context)
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: const Text('Book Appointment'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(
+      BuildContext context, String title, String content, IconData icon) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: Theme.of(context).primaryColor),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
               ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              content,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildInfoCard(String title, String content) {
-    return Container(
-      margin: const EdgeInsets.all(20),
-      padding: const EdgeInsets.all(20),
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 8,
-            offset: const Offset(2, 4),
+class AppointmentFormDialog extends StatefulWidget {
+  const AppointmentFormDialog({
+    super.key,
+  });
+
+  @override
+  _AppointmentFormDialogState createState() => _AppointmentFormDialogState();
+}
+
+class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+
+  String? selectedDoctorId;
+  DateTime? startDate;
+  DateTime? endDate;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Take your appointment'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              Text(
+                  'Choose a time slot between 8 AM and 12 PM or between 2 PM and 5 PM, except on Sundays.'),
+              // Start Date
+              SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () async {
+                  final pickedDate = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(2023),
+                    lastDate: DateTime(2100),
+                  );
+
+                  if (pickedDate != null) {
+                    final pickedTime = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.fromDateTime(DateTime.now()),
+                    );
+
+                    if (pickedTime != null) {
+                      final combined = DateTime(
+                        pickedDate.year,
+                        pickedDate.month,
+                        pickedDate.day,
+                        pickedTime.hour,
+                        pickedTime.minute,
+                      );
+                      setState(() => startDate = combined);
+                    }
+                  }
+                },
+                child: Text(
+                  startDate != null
+                      ? 'Start: ${startDate!.toLocal()}'
+                      : 'Select Start Date & Time',
+                ),
+              ),
+
+              // End Date
+              ElevatedButton(
+                onPressed: () async {
+                  final pickedDate = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(2023),
+                    lastDate: DateTime(2100),
+                  );
+
+                  if (pickedDate != null) {
+                    final pickedTime = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.fromDateTime(DateTime.now()),
+                    );
+
+                    if (pickedTime != null) {
+                      final combined = DateTime(
+                        pickedDate.year,
+                        pickedDate.month,
+                        pickedDate.day,
+                        pickedTime.hour,
+                        pickedTime.minute,
+                      );
+                      setState(() => endDate = combined);
+                    }
+                  }
+                },
+                child: Text(
+                  endDate != null
+                      ? 'End: ${endDate!.toLocal()}'
+                      : 'Select End Date & Time',
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-                fontSize: 20.sp,
-                fontWeight: FontWeight.w700,
-                color: Colors.black45),
-          ),
-          SizedBox(height: 5.h),
-          Text(
-            content,
-            style: TextStyle(
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w500,
-                color: Colors.black45),
-          ),
-        ],
-      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (_formKey.currentState?.validate() != true) return;
+
+            // Prepare your data object
+            final appointment = {
+              'DebuitDate': startDate?.toIso8601String(),
+              'FinDate': endDate?.toIso8601String(),
+            };
+
+            Navigator.of(context).pop();
+          },
+          child: Text('Submit'),
+        ),
+      ],
     );
   }
 }

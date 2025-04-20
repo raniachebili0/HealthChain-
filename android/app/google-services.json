@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "409930731313",
+    "project_id": "healthchain-d7194",
+    "storage_bucket": "healthchain-d7194.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:409930731313:android:2ae331b747285408196a10",
+        "android_client_info": {
+          "package_name": "com.example.health_chain"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCqyGQbXu4q4uaKZBN1iGf9iFydQWCYXoE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

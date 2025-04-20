@@ -1,10 +1,7 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/services/document_service.dart';
 import 'package:health_chain/utils/colors.dart';
-import 'package:health_chain/widgets/FileCategoryCard.dart';
 import 'package:health_chain/widgets/see_file_item.dart';
 
 class GetionDocumentScrenn extends StatelessWidget {
@@ -80,7 +77,8 @@ class GetionDocumentScrenn extends StatelessWidget {
                             return DoctorSeeFileCard(
                               fileid: file['_id'],
                               filetitle: file['fileName'],
-                              dateaccess: file['DebuitAccessDate'],
+                              startdateaccess: file['DebuitAccessDate'],
+                              enddateaccess: file['FinAccessDate'],
                               user: file['patient'],
                               fileurl: file['fileUrl'],
                             );

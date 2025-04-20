@@ -21,13 +21,14 @@ import '../../../../widgets/button.dart';
 import '../../../../widgets/textField.dart';
 
 class DoctorFormView extends StatefulWidget {
-  const DoctorFormView({Key? key}) : super(key: key);
+  const DoctorFormView({super.key});
 
   @override
   State<DoctorFormView> createState() => _DoctorFormViewState();
 }
 
 class _DoctorFormViewState extends State<DoctorFormView> {
+  @override
   Widget build(BuildContext context) {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
     final doctorFormViewModel = Provider.of<DoctorFormViewModel>(context);

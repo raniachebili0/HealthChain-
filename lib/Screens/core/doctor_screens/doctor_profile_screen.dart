@@ -94,7 +94,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                     return const Center(child: Text("No user data found"));
                   } else {
                     final user = snapshot.data!;
-                    print("userrrrrrrr ${user}");
+                    print("userrrrrrrr $user");
                     // Initializing controllers with user data
                     nameController.text = user['name'] ?? '';
                     emailController.text = user['email'] ?? '';

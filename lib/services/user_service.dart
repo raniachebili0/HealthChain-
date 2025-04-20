@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:health_chain/services/UserRole.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 
 class UserService {
   final String baseUrl = "http://10.0.2.2:3000/users";
@@ -185,6 +186,35 @@ class UserService {
       }
     } catch (e) {
       throw Exception("Error: $e");
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getDoctors() async {
+    try {
+      // TODO: Implement actual API call to get doctors list
+      return [];
+    } catch (e) {
+      debugPrint('Error getting doctors: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> getCurrentUser() async {
+    try {
+      // TODO: Implement actual API call to get current user
+      return {};
+    } catch (e) {
+      debugPrint('Error getting current user: $e');
+      return {};
+    }
+  }
+
+  Future<void> updateUser(Map<String, dynamic> updates) async {
+    try {
+      // TODO: Implement actual API call to update user
+    } catch (e) {
+      debugPrint('Error updating user: $e');
+      throw e;
     }
   }
 }

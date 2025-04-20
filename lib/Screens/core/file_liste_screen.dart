@@ -2,59 +2,57 @@ import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:health_chain/Screens/core/file_picker_view.dart';
 import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/services/document_service.dart';
 import 'package:health_chain/services/user_service.dart';
 import 'package:health_chain/utils/colors.dart';
 import 'package:health_chain/widgets/FileCategoryCard.dart';
 import 'package:health_chain/widgets/see_file_item.dart';
+import 'package:mime/mime.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:health_chain/Screens/core/file_list_view_model.dart';
 
 import '../../services/document_service.dart';
 
-class FileListeScreen extends StatefulWidget {
+class FileListeScreen extends StatelessWidget {
   final String category;
 
-  const FileListeScreen({super.key, required this.category});
-
-  @override
-  State<FileListeScreen> createState() => _FileListeScreenState();
-}
-
-class _FileListeScreenState extends State<FileListeScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // Load files after the first frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final medicalRecordsService =
-          Provider.of<MedicalRecordsService>(context, listen: false);
-      medicalRecordsService.loadFiles(widget.category);
-    });
-  }
+  const FileListeScreen({Key? key, required this.category}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final medicalRecordsService = Provider.of<MedicalRecordsService>(context);
+    return ChangeNotifierProvider(
+      create: (_) => FileListViewModel(
+        medicalRecordsService: context.read<MedicalRecordsService>(),
+        userService: context.read<UserService>(),
+        category: category,
+      ),
+      child: _FileListView(category: category),
+    );
+  }
+}
+
+class _FileListView extends StatelessWidget {
+  final String category;
+
+  const _FileListView({Key? key, required this.category}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<FileListViewModel>();
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'HealthChaine',
-          style: TextStyle(
-            color: AppColors.primaryColor,
-            fontSize: 30.sp,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
+        title: const Text('Files'),
         actions: [
           IconButton(
-            icon: Icon(Icons.notifications_rounded),
+            icon: const Icon(Icons.notifications_rounded),
             onPressed: () {},
-            color: Color(0xD25B5B5B),
           ),
         ],
       ),
@@ -66,20 +64,30 @@ class _FileListeScreenState extends State<FileListeScreen> {
               TextField(
                 decoration: InputDecoration(
                   hintText: 'Search...',
-                  prefixIcon: Icon(Icons.search),
+                  prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
                     borderSide: BorderSide.none,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   filled: true,
-                  fillColor: Color(0xFFCBE0F3),
+                  fillColor: Colors.grey[200],
                 ),
+                onChanged: viewModel.setSearchQuery,
               ),
+              const SizedBox(height: 16),
+              if (viewModel.error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    viewModel.error!,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                ),
               Expanded(
                 child: StreamBuilder<List<dynamic>>(
-                  stream: medicalRecordsService.filesStream,
+                  stream: viewModel.filesStream,
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
+                    if (viewModel.isLoading) {
                       return const Center(child: CircularProgressIndicator());
                     } else if (snapshot.hasError) {
                       return Center(child: Text('Error: ${snapshot.error}'));
@@ -88,17 +96,23 @@ class _FileListeScreenState extends State<FileListeScreen> {
                     }
 
                     final files = snapshot.data!;
+                    final searchQuery = viewModel.searchQuery.toLowerCase();
+                    final filteredFiles = searchQuery.isEmpty
+                        ? files
+                        : files.where((file) =>
+                            file['fileName']
+                                .toString()
+                                .toLowerCase()
+                                .contains(searchQuery)).toList();
+
                     return ListView.builder(
-                      itemCount: files.length,
+                      itemCount: filteredFiles.length,
                       itemBuilder: (context, index) {
-                        final file = files[index];
+                        final file = filteredFiles[index];
                         return FileCategoryCard(
                           title: file['fileName'] ?? 'Unnamed File',
-                          uploudDate:
-                              file['uplodeDate'] ?? 'no data cration File',
-                          onMorePressed: () {
-                            _showFileActions(context, file);
-                          },
+                          uploudDate: file['uplodeDate'] ?? 'No creation date',
+                          onMorePressed: () => _showFileActions(context, file),
                         );
                       },
                     );
@@ -111,119 +125,122 @@ class _FileListeScreenState extends State<FileListeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.pushNamed(context, AppRoutes.filePickerScreen);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FilePickerScreen(
+                category: category,
+                onFileUploaded: () {
+                  // Refresh the files list when returning from the file picker screen
+                  viewModel.loadFiles();
+                },
+              ),
+            ),
+          );
         },
-        backgroundColor: Colors.blue,
-        child: Icon(Icons.add),
+        child: const Icon(Icons.add),
       ),
     );
   }
-}
 
-void _showFileActions(BuildContext context, dynamic file) {
-  final UserService userService = UserService();
-  showModalBottomSheet(
-    context: context,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (context) {
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Wrap(
-          children: [
-            ListTile(
-                leading: Icon(Icons.visibility),
-                title: Text('View File'),
+  void _showFileActions(BuildContext context, dynamic file) {
+    final viewModel = context.read<FileListViewModel>();
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.visibility),
+                title: const Text('View File'),
                 onTap: () async {
                   Navigator.pop(context);
-
-                  final url = file['fileUrl'];
-                  final fileName = file['fileName'] ?? 'downloaded_file.pdf';
-
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          SfPdfViewerPage(url: file['fileUrl']),
+                      builder: (context) => SfPdfViewerPage(url: file['fileUrl']),
                     ),
                   );
-                }),
-            ListTile(
-              leading: Icon(Icons.edit),
-              title: Text('Give file access'),
-              onTap: () async {
-                final List<Map<String, dynamic>> doctors =
-                    await userService.getAllDoctors();
-                showDialog(
-                  context: context,
-                  builder: (context) {
-                    return AccessFileFormDialog(
-                      doctors: doctors,
-                      fileName: file['fileName'],
-                      fileUrl: file['fileUrl'],
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('Give file access'),
+                onTap: () async {
+                  final doctors = await viewModel.getAllDoctors();
+                  if (context.mounted) {
+                    showDialog(
+                      context: context,
+                      builder: (context) {
+                        return AccessFileFormDialog(
+                          doctors: doctors,
+                          fileName: file['fileName'],
+                          fileUrl: file['fileUrl'],
+                        );
+                      },
                     );
-                  },
-                );
-              },
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete),
+                title: const Text('Delete File'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDelete(context, file);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmDelete(BuildContext context, dynamic file) {
+    final viewModel = context.read<FileListViewModel>();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete File'),
+          content: Text('Are you sure you want to delete "${file['fileName']}"?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
             ),
-            ListTile(
-              leading: Icon(Icons.delete),
-              title: Text('Delete File'),
-              onTap: () {
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              onPressed: () {
                 Navigator.pop(context);
-                _confirmDelete(context, file);
+                viewModel.deleteFile(file['_id'], file['fileType']);
               },
+              child: const Text('Delete'),
             ),
           ],
-        ),
-      );
-    },
-  );
-}
-
-void _confirmDelete(BuildContext context, dynamic file) {
-  final medicalRecordsService =
-      Provider.of<MedicalRecordsService>(context, listen: false);
-  showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text('Delete File'),
-        content: Text('Are you sure you want to delete "${file['name']}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context), // Cancel
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            onPressed: () {
-              Navigator.pop(context); // Close dialog
-              medicalRecordsService.deleteFile(file['_id'], file['fileType']);
-              // ScaffoldMessenger.of(context).showSnackBar(
-              //  // SnackBar(content: Text('File "${file['_id']}" deleted.')),
-              // );
-            },
-            child: Text('Delete'),
-          ),
-        ],
-      );
-    },
-  );
+        );
+      },
+    );
+  }
 }
 
 class SfPdfViewerPage extends StatelessWidget {
   final String url;
 
-  const SfPdfViewerPage({super.key, required this.url});
+  const SfPdfViewerPage({Key? key, required this.url}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Preview PDF")),
+      appBar: AppBar(title: const Text("Preview")),
       body: SfPdfViewer.network(url),
     );
   }
@@ -381,6 +398,8 @@ class _AccessFileFormDialogState extends State<AccessFileFormDialog> {
 
             print("Access File Submitted: $accessFile");
 
+            final medicalRecordsService =
+                Provider.of<MedicalRecordsService>(context, listen: false);
             medicalRecordsService.createAccessFile(
               fileName: widget.fileName,
               doctor: selectedDoctorId,

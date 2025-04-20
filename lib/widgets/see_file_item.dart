@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:health_chain/Screens/core/file_liste_screen.dart';
@@ -11,7 +10,8 @@ import 'package:http/http.dart' as http;
 class DoctorSeeFileCard extends StatelessWidget {
   final String filetitle;
   final String user;
-  final String dateaccess;
+  final String startdateaccess;
+  final String enddateaccess;
   final String fileurl;
   final String fileid;
 
@@ -19,9 +19,10 @@ class DoctorSeeFileCard extends StatelessWidget {
     super.key,
     required this.filetitle,
     required this.user,
-    required this.dateaccess,
+    required this.startdateaccess,
     required this.fileurl,
     required this.fileid,
+    required this.enddateaccess,
   });
 
   @override
@@ -76,12 +77,38 @@ class DoctorSeeFileCard extends StatelessWidget {
                 flex: 2,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => SfPdfViewerPage(url: fileurl),
-                      ),
-                    );
+                    DateTime now = DateTime.now();
+                    DateTime startDate = DateTime.parse(startdateaccess);
+                    DateTime endDate = DateTime.parse(enddateaccess);
+                    if (now.isAfter(startDate) && now.isBefore(endDate)) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SfPdfViewerPage(url: fileurl),
+                        ),
+                      );
+                    } else {
+                      // If current time is outside the access interval, show an alert.
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text("Access Denied"),
+                            content: Text(
+                                "Sorry, this file is no longer accessible at this time."),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(
+                                      context); // Close the alert dialog
+                                },
+                                child: Text("OK"),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryColor,

@@ -28,7 +28,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
     ProfileScreen(),
   ];
 
-  GlobalKey<CurvedNavigationBarState> _bottomNavigationKey = GlobalKey();
+  final GlobalKey<CurvedNavigationBarState> _bottomNavigationKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {

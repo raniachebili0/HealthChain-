@@ -1,88 +1,26 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:health_chain/Screens/auth/register/profile_img_view_model.dart';
 import 'package:health_chain/Screens/auth/register/signupForm/doctor_form_view_model.dart';
 import 'package:health_chain/Screens/auth/register/signupForm/user_form_view_model.dart';
-import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/services/auth_service.dart';
 import 'package:health_chain/utils/colors.dart';
 import 'package:health_chain/utils/themes.dart';
 import 'package:health_chain/widgets/appBar.dart';
 import 'package:health_chain/widgets/button.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-
 import 'inscriptionScreen/inscription_view_model.dart';
 
-class ImagePickerScreen extends StatefulWidget {
-  @override
-  _ImagePickerScreenState createState() => _ImagePickerScreenState();
-}
-
-class _ImagePickerScreenState extends State<ImagePickerScreen> {
-  File? selectedImage;
-
-  Future<void> _pickImage() async {
-    final pickedFile =
-        await ImagePicker().pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      setState(() {
-        selectedImage = File(pickedFile.path);
-      });
-    }
-  }
-
-  void buttonAction(BuildContext context, email, gender, nom, mdp, date, tel,
-      Image, doctorid, doctorspclt) async {
-    final _authService = Provider.of<AuthService>(context, listen: false);
-    String userRole = "";
-    if (doctorid == null || doctorid.isEmpty) {
-      userRole = "patient";
-    } else {
-      userRole = "practitioner";
-    }
-
-    // Call signup function
-    String signupResult = await _authService.signup(
-        email: email,
-        name: nom,
-        tel: tel,
-        password: mdp,
-        role: userRole,
-        birthDate: date,
-        gender: gender,
-        filePath: Image,
-        doctorId: doctorid,
-        doctorspecility: doctorspclt);
-
-    if (signupResult == "success") {
-      print("Signup successful!");
-      // Navigate to the next screen
-      Navigator.pushReplacementNamed(context, AppRoutes.login);
-    } else {
-      print("Signup failed: $signupResult");
-      // Show error message to user (optional, you can use a snackbar, dialog, etc.)
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Signup failed: $signupResult")));
-    }
-  }
+class ImagePickerScreen extends StatelessWidget {
+  const ImagePickerScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final inscriptionViewModel = Provider.of<InscriptionViewModel>(context);
     final userFormViewModel = Provider.of<UserFormViewModel>(context);
     final doctorFormViewModel = Provider.of<DoctorFormViewModel>(context);
-    String email = inscriptionViewModel.emailController.text;
-    String Gender = userFormViewModel.selectedGender;
-    String Name = userFormViewModel.nomController.text;
-    String Password = userFormViewModel.mdpController.text;
-    String BirthDate =
-        userFormViewModel.date.toString(); // Or select from date picker
-    String Tel = userFormViewModel.telController.text;
-    File? image = selectedImage;
-    String id = doctorFormViewModel.doctorIdController.text;
-    String speciality = doctorFormViewModel.doctorspecialiteController.text;
+    final profileImageViewModel = Provider.of<ProfileImageViewModel>(context);
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
@@ -115,10 +53,10 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                       children: [
                         SizedBox(
                           height: 300.h,
-                          child: selectedImage != null
+                          child: profileImageViewModel.selectedImage != null
                               ? Image.file(
-                                  selectedImage!,
-                                  height: 300, // Adjust size as needed
+                                  profileImageViewModel.selectedImage!,
+                                  height: 300,
                                   width: double.infinity,
                                   fit: BoxFit.cover,
                                 )
@@ -126,43 +64,53 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                                   decoration: BoxDecoration(
                                     color: Colors.white30,
                                     borderRadius: BorderRadius.circular(10),
-                                    // Optional, for rounded corners
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.black.withOpacity(0.2),
-                                        // Shadow color
-                                        offset: Offset(0, 4),
-                                        // Horizontal and vertical offset
+                                        offset: const Offset(0, 4),
                                         blurRadius: 6,
-                                        // Blur radius of the shadow
-                                        spreadRadius:
-                                            1, // How much the shadow spreads
+                                        spreadRadius: 1,
                                       ),
                                     ],
                                   ),
                                   child: Center(
-                                      child: IconButton(
-                                    onPressed: _pickImage,
-                                    icon: Icon(Icons.add_a_photo),
-                                    tooltip: "Pick Image",
-                                    iconSize: 70,
-                                  )),
+                                    child: IconButton(
+                                      onPressed: profileImageViewModel.pickImage,
+                                      icon: const Icon(Icons.add_a_photo),
+                                      tooltip: "Pick Image",
+                                      iconSize: 70,
+                                    ),
+                                  ),
                                 ),
                         ),
+                        if (profileImageViewModel.errorMessage != null)
+                          Padding(
+                            padding: EdgeInsets.only(top: 8.h),
+                            child: Text(
+                              profileImageViewModel.errorMessage!,
+                              style: TextStyle(
+                                color: AppColors.errorColor,
+                                fontSize: 14.sp,
+                              ),
+                            ),
+                          ),
                         SizedBox(height: 80.h),
                         MyButton(
-                            buttonFunction: () => buttonAction(
-                                context,
-                                email,
-                                Gender,
-                                Name,
-                                Password,
-                                BirthDate,
-                                Tel,
-                                image,
-                                id,
-                                speciality),
-                            buttonText: 'Continue'),
+                          buttonFunction: () => profileImageViewModel.signup(
+                            context: context,
+                            email: inscriptionViewModel.emailController.text,
+                            gender: userFormViewModel.selectedGender,
+                            name: userFormViewModel.nomController.text,
+                            password: userFormViewModel.mdpController.text,
+                            birthDate: userFormViewModel.date.toString(),
+                            tel: userFormViewModel.telController.text,
+                            image: profileImageViewModel.selectedImage,
+                            doctorId: doctorFormViewModel.doctorIdController.text,
+                            doctorSpeciality:
+                                doctorFormViewModel.doctorspecialiteController.text,
+                          ),
+                          buttonText: 'Continue',
+                        ),
                       ],
                     ),
                   ),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:health_chain/utils/colors.dart';
 
-import '../models/doctor_model.dart';
 
 class DoctorCard extends StatelessWidget {
   final Map<String, dynamic> doctor;

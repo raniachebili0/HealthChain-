@@ -7,10 +7,12 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:health_chain/models/SharedData.dart';
 
 class MedicalRecordsService extends ChangeNotifier {
   final String baseUrl = 'http://10.0.2.2:3000/medical-records';
   final storage = FlutterSecureStorage();
+  final SharedData _sharedData = SharedData();
 
   final _filesController = StreamController<List<dynamic>>.broadcast();
 
@@ -25,7 +27,7 @@ class MedicalRecordsService extends ChangeNotifier {
     return await storage.read(key: "auth_token");
   }
 
-  Future<Map<String, dynamic>> uploadFile(File file, String fileType) async {
+  Future<Map<String, dynamic>> uploadFile(File file, String category) async {
     try {
       String? authToken = await getAuthToken();
       if (authToken == null) throw Exception("Authentication token is missing");
@@ -33,7 +35,7 @@ class MedicalRecordsService extends ChangeNotifier {
       var uri = Uri.parse('$baseUrl/upload');
       var request = http.MultipartRequest('POST', uri)
         ..headers['Authorization'] = 'Bearer $authToken'
-        ..fields['fileType'] = fileType
+        ..fields['fileType'] = category
         ..files.add(
           await http.MultipartFile.fromPath(
             'file',
@@ -59,6 +61,7 @@ class MedicalRecordsService extends ChangeNotifier {
     try {
       String? authToken = await getAuthToken();
       if (authToken == null) throw Exception("Authentication token is missing");
+
       var response = await http.get(
         Uri.parse('$baseUrl/getfiles?fileType=$fileType'),
         headers: {
@@ -66,8 +69,14 @@ class MedicalRecordsService extends ChangeNotifier {
           'Content-Type': 'application/json',
         },
       );
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return json.decode(response.body);
+        final decoded = json.decode(response.body);
+        if (decoded['files'] != null && decoded['files'] is List) {
+          return decoded['files'];
+        } else {
+          return []; // Safe fallback
+        }
       } else {
         throw Exception('Failed to load files list');
       }
@@ -75,6 +84,7 @@ class MedicalRecordsService extends ChangeNotifier {
       throw Exception('Error fetching files: $e');
     }
   }
+
 
   Future<List<dynamic>> getAccessFilesList() async {
     try {
@@ -183,6 +193,58 @@ class MedicalRecordsService extends ChangeNotifier {
       }
     } catch (e) {
       print('Error occurred: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getDocuments() async {
+    try {
+      // TODO: Implement actual API call
+      return [];
+    } catch (e) {
+      debugPrint('Error getting documents: $e');
+      return [];
+    }
+  }
+
+  Future<bool> uploadDocument(String filePath, String category) async {
+    try {
+      // TODO: Implement actual file upload
+      return true;
+    } catch (e) {
+      debugPrint('Error uploading document: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteDocument(String documentId) async {
+    try {
+      // TODO: Implement actual document deletion
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting document: $e');
+      return false;
+    }
+  }
+
+  Future<Map<String, int>> getDocumentCounts() async {
+    try {
+      // TODO: Implement actual count retrieval
+      return {
+        'medical_records': 0,
+        'prescriptions': 0,
+        'lab_results': 0,
+        'imaging': 0,
+        'other': 0,
+      };
+    } catch (e) {
+      debugPrint('Error getting document counts: $e');
+      return {
+        'medical_records': 0,
+        'prescriptions': 0,
+        'lab_results': 0,
+        'imaging': 0,
+        'other': 0,
+      };
     }
   }
 }

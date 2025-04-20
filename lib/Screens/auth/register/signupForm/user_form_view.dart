@@ -1,20 +1,11 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:date_format_field/date_format_field.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:health_chain/Screens/auth/register/inscriptionScreen/inscription_view_model.dart';
 import 'package:health_chain/Screens/auth/register/signupForm/user_form_view_model.dart';
-import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/utils/colors.dart';
 import 'package:provider/provider.dart';
-import 'dart:ui';
 
-import '../../../../../models/SharedData.dart';
-
-import '../../../../services/auth_service.dart';
 import '../../../../utils/themes.dart';
 import '../../../../widgets/appBar.dart';
 import '../../../../widgets/button.dart';
@@ -316,7 +307,7 @@ class UserFormView extends StatelessWidget {
                                           padding: EdgeInsets.only(
                                               left: 15.0, top: 2.0),
                                           child: Text(
-                                            "errorString",
+                                            "",
                                           ))),
                                 ],
                               ),

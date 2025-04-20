@@ -15,111 +15,40 @@ import 'package:health_chain/widgets/appBar.dart';
 import 'package:health_chain/widgets/button.dart';
 import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:health_chain/services/document_service.dart';
+import 'package:health_chain/Screens/core/file_picker_view_model.dart';
 
-class FilePickerScreen extends StatefulWidget {
-  @override
-  _FilePickerScreenState createState() => _FilePickerScreenState();
-}
+class FilePickerScreen extends StatelessWidget {
+  final String category;
+  final VoidCallback? onFileUploaded;
 
-class _FilePickerScreenState extends State<FilePickerScreen> {
-  String? pdfPath;
-  PdfController? pdfController;
-  final String baseUrl = 'http://10.0.2.2:3000/medical-records';
-  final storage = FlutterSecureStorage();
-
-  Future<void> pickFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'], // Only allow PDFs
-    );
-
-    if (result != null && result.files.single.path != null) {
-      setState(() {
-        pdfPath = result.files.single.path!;
-        pdfController = PdfController(document: PdfDocument.openFile(pdfPath!));
-      });
-    } else {
-      print("No file selected");
-    }
-  }
-
-  Future<String?> getAuthToken() async {
-    return await storage.read(key: "auth_token");
-  }
-
-  Future<Map<String, dynamic>> uploadFile(File file, String fileType) async {
-    try {
-      String? authToken = await getAuthToken();
-      if (authToken == null) throw Exception("Authentication token is missing");
-
-      var uri = Uri.parse('$baseUrl/upload');
-      var request = http.MultipartRequest('POST', uri)
-        ..headers['Authorization'] = 'Bearer $authToken'
-        ..fields['fileType'] = fileType
-        ..files.add(
-          await http.MultipartFile.fromPath(
-            'file',
-            file.path,
-            contentType: MediaType.parse(
-                lookupMimeType(file.path) ?? 'application/octet-stream'),
-          ),
-        );
-
-      var response = await request.send();
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        var responseBody = await response.stream.bytesToString();
-        return json.decode(responseBody);
-      } else {
-        throw Exception('Failed to upload file');
-      }
-    } catch (e) {
-      throw Exception('Error uploading file: $e');
-    }
-  }
-
-  void buttonAction(BuildContext context, String? pdfPath) async {
-    if (pdfPath != null && File(pdfPath).existsSync()) {
-      try {
-        await uploadFile(File(pdfPath), "observation");
-
-        // Show success alert dialog
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text("Success"),
-              content: Text("File uploaded successfully!"),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Close the alert dialog
-                    Navigator.pushReplacementNamed(context,
-                        AppRoutes.documentScreen); // Navigate to DocumentScreen
-                  },
-                  child: Text("OK"),
-                ),
-              ],
-            );
-          },
-        );
-      } catch (e) {
-        print("Error: $e");
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to upload file')),
-        );
-      }
-    } else {
-      print("No file selected or invalid path");
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please select a valid file')),
-      );
-    }
-  }
+  const FilePickerScreen({
+    Key? key, 
+    required this.category,
+    this.onFileUploaded,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => FilePickerViewModel(
+        medicalRecordsService: context.read<MedicalRecordsService>(),
+        category: category,
+      ),
+      child: _FilePickerView(onFileUploaded: onFileUploaded),
+    );
+  }
+}
+
+class _FilePickerView extends StatelessWidget {
+  final VoidCallback? onFileUploaded;
+
+  const _FilePickerView({this.onFileUploaded});
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<FilePickerViewModel>();
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
@@ -128,62 +57,81 @@ class _FilePickerScreenState extends State<FilePickerScreen> {
           children: [
             const CustomAppBar(appbartext: 'Upload File'),
             Padding(
-              padding: EdgeInsets.fromLTRB(17.0, 0.0, 17.0, 20.0),
+              padding: const EdgeInsets.fromLTRB(17.0, 0.0, 17.0, 20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 13.h),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 13),
                     child: Text(
                       'Hi patient, Add your document',
-                      style: CustomTextStyle.titleStyle,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 28.h),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 28),
                     child: Text(
                       "Securely upload and manage your medical records for easy access anytime.",
-                      style: CustomTextStyle.h2,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
                     ),
                   ),
-                  Form(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          height: 300,
-                          child: pdfPath != null && File(pdfPath!).existsSync()
-                              ? PdfView(controller: pdfController!)
-                              : Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white30,
-                                    borderRadius: BorderRadius.circular(10),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        offset: Offset(0, 4),
-                                        blurRadius: 6,
-                                        spreadRadius: 1,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: IconButton(
-                                      onPressed: pickFile,
-                                      icon: Icon(Icons.file_open_rounded),
-                                      tooltip: "Pick PDF",
-                                      iconSize: 70,
-                                    ),
-                                  ),
-                                ),
-                        ),
-                        SizedBox(height: 120),
-                        MyButton(
-                          buttonFunction: () => buttonAction(context, pdfPath),
-                          buttonText: 'Upload',
-                        ),
-                      ],
+                  if (viewModel.error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Text(
+                        viewModel.error!,
+                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      ),
                     ),
+                  SizedBox(
+                    height: 300,
+                    child: viewModel.hasSelectedFile
+                        ? (viewModel.pdfController != null
+                            ? PdfView(controller: viewModel.pdfController!)
+                            : _buildFilePreview(viewModel.selectedFilePath!))
+                        : Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white30,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  offset: const Offset(0, 4),
+                                  blurRadius: 6,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: IconButton(
+                                onPressed: viewModel.pickFile,
+                                icon: const Icon(Icons.file_open_rounded),
+                                tooltip: "Pick File",
+                                iconSize: 70,
+                              ),
+                            ),
+                          ),
+                  ),
+                  const SizedBox(height: 120),
+                  MyButton(
+                    buttonFunction: () async {
+                      if (viewModel.hasSelectedFile) {
+                        final success = await viewModel.uploadFile();
+                        if (success && context.mounted) {
+                          if (onFileUploaded != null) {
+                            onFileUploaded!();
+                          }
+                          Navigator.pop(context);
+                        }
+                      }
+                    },
+                    buttonText: viewModel.isLoading ? 'Uploading...' : 'Upload',
                   ),
                 ],
               ),
@@ -192,5 +140,69 @@ class _FilePickerScreenState extends State<FilePickerScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildFilePreview(String filePath) {
+    final fileExtension = filePath.split('.').last.toLowerCase();
+    
+    if (fileExtension == 'jpg' || fileExtension == 'jpeg' || fileExtension == 'png') {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white30,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              offset: const Offset(0, 4),
+              blurRadius: 6,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.file(
+            File(filePath),
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    } else {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white30,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              offset: const Offset(0, 4),
+              blurRadius: 6,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.insert_drive_file,
+                size: 70,
+                color: Colors.grey[600],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Selected file: ${filePath.split('/').last}',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[800],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 }

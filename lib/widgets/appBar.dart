@@ -7,7 +7,7 @@ import '../utils/themes.dart';
 class CustomAppBar extends StatefulWidget {
   final String appbartext;
 
-  const CustomAppBar({Key? key, required this.appbartext}) : super(key: key);
+  const CustomAppBar({super.key, required this.appbartext});
 
   @override
   State<CustomAppBar> createState() => _CustomAppBarState();

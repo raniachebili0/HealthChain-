@@ -26,7 +26,7 @@ class _DoctorBottomNavBarState extends State<DoctorBottomNavBar> {
     DoctorProfileScreen(),
   ];
 
-  GlobalKey<CurvedNavigationBarState> _bottomNavigationKey = GlobalKey();
+  final GlobalKey<CurvedNavigationBarState> _bottomNavigationKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {

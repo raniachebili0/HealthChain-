@@ -26,13 +26,16 @@ class LoginViewModel extends ChangeNotifier {
     String email = emailController.text;
     String password = passwordController.text;
     print(email + password);
+
     if (formKey.currentState!.validate()) {
       print("Form is valid");
 
       final loginStatus = await _authService.login(email, password);
+
       if (loginStatus == "Login successful") {
         String? role = await storage.read(key: "user_role");
         print("ddddddddddddddddddd      ${role}");
+
         if (role == "practitioner") {
           Navigator.pushReplacementNamed(context, AppRoutes.doctormainScreen);
         } else {
@@ -40,7 +43,13 @@ class LoginViewModel extends ChangeNotifier {
         }
       } else {
         print("Login failed: $loginStatus");
-        // Handle invalid login attempt, e.g., show a message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(loginStatus),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
       }
     } else {
       print("Form not is valid");

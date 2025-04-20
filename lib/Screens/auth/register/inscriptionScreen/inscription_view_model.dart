@@ -43,16 +43,36 @@ class InscriptionViewModel extends ChangeNotifier {
 
       print("Response received: $response");
 
-      // Check if the response contains the "message" key instead of "status"
+      // Check if the response contains the "error" key
       if (response.containsKey("error")) {
         print("Error: ${response["error"]}");
-        // Show error message to user
+
+        String errorMessage = response["error"]
+            .toString()
+            .replaceFirst(RegExp(r'error\s*:'), '')
+            .trim();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
       } else if (response["message"] == "OTP sent successfully") {
         // Navigate if OTP is sent successfully
         Navigator.pushReplacementNamed(context, AppRoutes.validationDuCompte);
         print("OTP Sent Successfully");
       } else {
         print("Failed to send OTP");
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to send OTP. Please try again."),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
       }
     }
   }

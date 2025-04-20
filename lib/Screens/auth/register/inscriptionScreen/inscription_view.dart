@@ -12,6 +12,8 @@ import 'inscription_view_model.dart';
 
 @RoutePage()
 class InscriptionScreen extends StatelessWidget {
+  const InscriptionScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     final inscriptionViewModel = Provider.of<InscriptionViewModel>(context);

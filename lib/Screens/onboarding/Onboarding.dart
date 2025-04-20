@@ -10,6 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/onbardingModel.dart';
 
 class OnBoard extends StatefulWidget {
+  const OnBoard({super.key});
+
   @override
   _OnBoardState createState() => _OnBoardState();
 }
@@ -160,7 +162,7 @@ class _OnBoardState extends State<OnBoard> {
                                 ),
                                 Row(
                                   children: [
-                                    Container(
+                                    SizedBox(
                                       height: 10.0,
                                       child: ListView.builder(
                                         itemCount: screens.length - 1,
@@ -292,6 +294,7 @@ class _OnBoardState extends State<OnBoard> {
                     ),
                   );
               }
+              return null;
             }),
       ),
     );

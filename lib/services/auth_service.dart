@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:health_chain/services/NotificationService.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -54,9 +55,9 @@ class AuthService {
       final String responseData = response.body;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print("OTP Verified Successfully: ${responseData}");
+        print("OTP Verified Successfully: $responseData");
       } else {
-        print("OTP Verification Failed: ${responseData}");
+        print("OTP Verification Failed: $responseData");
       }
 
       return responseData; // Return the response body as a string
@@ -131,10 +132,16 @@ class AuthService {
   // Step 4: Login User
   Future<String> login(String email, String password) async {
     try {
+      String? userFCMToken = await NotificationService.getFCMToken();
+      print("tokeeennnnnnn $userFCMToken ");
       final response = await http.post(
         Uri.parse("$baseUrl/login"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"email": email, "password": password}),
+        body: jsonEncode({
+          "email": email,
+          "password": password,
+          "userFCMToken": userFCMToken,
+        }),
       );
 
       print("Response received with status code: ${response.statusCode}");

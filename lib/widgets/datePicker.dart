@@ -26,7 +26,7 @@ class CustomCupertinoDatePicker extends StatefulWidget {
   final DateTime? selectedDate;
 
   const CustomCupertinoDatePicker({
-    Key? key,
+    super.key,
     required this.itemExtent,
     required this.onSelectedItemChanged,
     this.minDate,
@@ -42,7 +42,7 @@ class CustomCupertinoDatePicker extends StatefulWidget {
     this.offAxisFraction = 0.0,
     this.useMaginifier = false,
     this.selectionOverlay = const CupertinoPickerDefaultSelectionOverlay(),
-  }) : super(key: key);
+  });
 
   @override
   State<CustomCupertinoDatePicker> createState() =>
@@ -334,7 +334,7 @@ Widget build(BuildContext context) {
 }
 
 class CustomCupertinoPickerApp extends StatefulWidget {
-  const CustomCupertinoPickerApp({Key? key}) : super(key: key);
+  const CustomCupertinoPickerApp({super.key});
   @override
   State<CustomCupertinoPickerApp> createState() =>
       _CustomCupertinoPickerAppState();

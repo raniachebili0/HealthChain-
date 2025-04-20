@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:health_chain/Screens/auth/register/inscriptionScreen/inscription_view_model.dart';
+import 'package:health_chain/Screens/auth/register/validation_view_model.dart';
 import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/services/auth_service.dart';
 import 'package:provider/provider.dart';
@@ -14,54 +15,14 @@ import '../../../widgets/errorAlert.dart';
 import '../../../widgets/button.dart';
 import 'package:http/http.dart' as http;
 
-class ValidationDuCompte extends StatefulWidget {
+class ValidationDuCompte extends StatelessWidget {
   const ValidationDuCompte({Key? key}) : super(key: key);
-
-  @override
-  State<ValidationDuCompte> createState() => _ValidationDuCompteState();
-}
-
-class _ValidationDuCompteState extends State<ValidationDuCompte> {
-  bool border = false;
-  String verificationCode = "";
-
-  String getTempAccountValidation(String verificationCode) {
-    if (verificationCode.isEmpty) {
-      return 'Please enter OTP';
-    } else if (verificationCode.length != 6) {
-      return 'OTP should be 6 digits long';
-    }
-    return "valide";
-  }
-
-  // Button action
-  void buttonAction(String email, String otp) async {
-    final _authService = Provider.of<AuthService>(context, listen: false);
-    try {
-      // Assuming the response is a simple string message
-      final response = await _authService.verifyOtp(email, otp);
-
-      // Log the raw response to help debug
-      print("Raw response from verifyOtp: $response");
-
-      if (response == "OTP Verified") {
-        print("OTP Verified: $response");
-        Navigator.pushReplacementNamed(context, AppRoutes.userFormView);
-      } else {
-        print("Invalid OTP: $response");
-        // Show invalid OTP message
-      }
-    } catch (e) {
-      // Log the error if any issues occur during verification
-      print("Error verifying OTP: $e");
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final inscriptionViewModel = Provider.of<InscriptionViewModel>(context);
     final sharedData = Provider.of<SharedData>(context, listen: false);
-    String tel = sharedData.telNumData ?? "000000000"; // Prevent null errors
+    final validationViewModel = Provider.of<ValidationViewModel>(context);
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -97,10 +58,12 @@ class _ValidationDuCompteState extends State<ValidationDuCompte> {
                           fieldWidth: 46.w,
                           fieldHeight: 50.h,
                           numberOfFields: 6,
-                          enabledBorderColor:
-                              border ? AppColors.errorColor : Color(0xffD8D8D8),
-                          focusedBorderColor:
-                              border ? AppColors.errorColor : Color(0xff0E0E0C),
+                          enabledBorderColor: validationViewModel.hasError
+                              ? AppColors.errorColor
+                              : Color(0xffD8D8D8),
+                          focusedBorderColor: validationViewModel.hasError
+                              ? AppColors.errorColor
+                              : Color(0xff0E0E0C),
                           borderRadius: BorderRadius.circular(8.r),
                           keyboardType: TextInputType.number,
                           borderWidth: 1.5,
@@ -112,24 +75,47 @@ class _ValidationDuCompteState extends State<ValidationDuCompte> {
                           showFieldAsBox: true,
                           onCodeChanged: (String code) {},
                           onSubmit: (String code) {
-                            setState(() => verificationCode = code);
+                            validationViewModel.setVerificationCode(code);
                           },
                         ),
                         SizedBox(height: 13.h),
                         InkWell(
-                          onTap: () {
-                            print("Resend OTP tapped.");
-                            // Implement resend OTP logic here
-                          },
-                          child: Text('J’ai pas reçu le code',
-                              style: CustomTextStyle.lien),
+                          onTap: () => validationViewModel.resendOtp(
+                              inscriptionViewModel.emailController.text),
+                          child: Text(
+                            "J'ai pas reçu le code",
+                            style: CustomTextStyle.lien,
+                          ),
                         ),
                         SizedBox(height: 270.h),
                         MyButton(
-                            buttonFunction: () => buttonAction(
+                          buttonFunction: () {
+                            print(
+                                "otp:" + validationViewModel.verificationCode);
+                            final validationMessage =
+                                validationViewModel.validateVerificationCode(
+                                    validationViewModel.verificationCode);
+
+                            if (validationMessage != "valide") {
+                              validationViewModel.setError(true);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(validationMessage),
+                                  backgroundColor: Colors.red,
+                                  duration: Duration(seconds: 3),
+                                ),
+                              );
+                            } else {
+                              validationViewModel.setError(false);
+                              validationViewModel.verifyOtp(
+                                context,
                                 inscriptionViewModel.emailController.text,
-                                verificationCode),
-                            buttonText: 'Continue'),
+                                validationViewModel.verificationCode,
+                              );
+                            }
+                          },
+                          buttonText: 'Continue',
+                        ),
                       ],
                     ),
                   ),

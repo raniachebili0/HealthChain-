@@ -54,7 +54,7 @@ class FileCategoryCard extends StatelessWidget {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  "$uploudDate",
+                  uploudDate,
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey.shade600,
