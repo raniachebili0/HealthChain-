@@ -175,7 +175,7 @@ class DoctorSeeFileCard extends StatelessWidget {
                                   final accessFileId =
                                       fileid; // replace or pass dynamically
                                   final response = await http.patch(
-                                    Uri.parse('http://192.168.0.107:3000/medical-records/$accessFileId/description'),
+                                    Uri.parse('http://192.168.1.117:3000/medical-records/$accessFileId/description'),
                                     headers: {
                                       'Content-Type': 'application/json',
                                       // 'Authorization': 'Bearer your_token', // if needed

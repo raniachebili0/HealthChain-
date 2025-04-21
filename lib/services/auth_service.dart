@@ -4,9 +4,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api_config.dart';
 
 class AuthService {
-  final String baseUrl = "http://192.168.0.107:3000/auth";
+  final String baseUrl = "${ApiConfig.baseUrl}/auth";
   final storage = FlutterSecureStorage();
 
   // Step 1: Send OTP
@@ -93,7 +94,7 @@ class AuthService {
 
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://192.168.0.107:3000/auth/signup'),
+        Uri.parse('${ApiConfig.baseUrl}/auth/signup'),
       );
 
       // ✅ Ajouter les données JSON comme champ de formulaire
@@ -131,10 +132,16 @@ class AuthService {
   // Step 4: Login User
   Future<String> login(String email, String password) async {
     try {
+      // Fix common email typos
+      String correctedEmail = _correctEmailTypos(email);
+      if (correctedEmail != email) {
+        print("Corrected email from $email to $correctedEmail");
+      }
+      
       final response = await http.post(
         Uri.parse("$baseUrl/login"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"email": email, "password": password}),
+        body: jsonEncode({"email": correctedEmail, "password": password}),
       );
 
       print("Response received with status code: ${response.statusCode}");
@@ -165,6 +172,29 @@ class AuthService {
       print("Error during login: $e");
       return "Error during login: $e";
     }
+  }
+
+  // Helper method to correct common email typos
+  String _correctEmailTypos(String email) {
+    // Define common domain typos and their corrections
+    final Map<String, String> typoCorrections = {
+      'exaple.com': 'example.com',
+      'gmial.com': 'gmail.com',
+      'gamil.com': 'gmail.com',
+      'gmai.com': 'gmail.com',
+      'hotmai.com': 'hotmail.com',
+      'yaho.com': 'yahoo.com',
+      'outlok.com': 'outlook.com',
+    };
+    
+    // Check for each typo in the email
+    for (var typo in typoCorrections.keys) {
+      if (email.contains(typo)) {
+        return email.replaceAll(typo, typoCorrections[typo]!);
+      }
+    }
+    
+    return email; // Return original if no corrections needed
   }
 
   // Logout

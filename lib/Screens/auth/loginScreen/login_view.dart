@@ -113,14 +113,16 @@ class LoginScreen extends StatelessWidget {
                           ),
                           Spacer(),
                           // SizedBox(height: 37.h),
-                          MyButton(
-                            buttonFunction: () {
-                              print("Button clicked");
-                              loginViewModel.buttonAction(
-                                  context, formKeylogin);
-                            },
-                            buttonText: 'Login',
-                          ),
+                          loginViewModel.isLoading 
+                            ? CircularProgressIndicator(color: Colors.green)
+                            : MyButton(
+                                buttonFunction: () {
+                                  print("Button clicked");
+                                  loginViewModel.buttonAction(
+                                      context, formKeylogin);
+                                },
+                                buttonText: 'Login',
+                              ),
 
                           SizedBox(height: 13.h),
                           Row(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:health_chain/Screens/auth/loginScreen/login_view.dart';
 import 'package:health_chain/Screens/auth/register/Validation_du_compte.dart';
+import 'package:health_chain/Screens/core/all_messages_screen.dart';
 import 'package:health_chain/Screens/core/chat-screen.dart';
 import 'package:health_chain/Screens/core/conversation-screen.dart';
 import 'package:health_chain/Screens/core/docter_detailles_screnn.dart';
@@ -14,6 +15,8 @@ import 'package:health_chain/Screens/auth/register/inscriptionScreen/inscription
 import 'package:health_chain/Screens/auth/register/profile_img_view.dart';
 import 'package:health_chain/Screens/onboarding/Onboarding.dart';
 import 'package:health_chain/services/UserRole.dart';
+import 'package:health_chain/Screens/audio-call-screen.dart';
+import 'package:health_chain/Screens/video-call-screen.dart';
 
 import '../Screens/auth/register/signupForm/user_form_view.dart';
 import '../Screens/auth/register/signupForm/doctor_form_view.dart';
@@ -35,15 +38,21 @@ class AppRoutes {
   static const String filePickerScreen = '/file_picker_view';
   static const String imagePickerScreen = '/profile_img_view';
   static const String mainScreen = '/main_screen';
-  static const String doctormainScreen = '/main_screnn_doctor';
+ 
   static const String documentScreen = '/documents_screen';
   static const String notificationScreen = '/notification_screen';
   static const String homeScreen = '/home_screen';
   static const String servicesScreen = '/services_screen';
+ 
+  static const String conversationScreen = '/conversation-screen';
+  static const String audioCallScreen = '/audio-call-screen';
+  static const String videoCallScreen = '/video-call-screen';
+  static const String chatScreen = '/chat-screen';
+  static const String doctormainScreen = '/main_screnn_doctor';
   static const String doctorFormView = '/doctor_form_view';
   static const String doctorsListScreen = '/doctors_list_screen';
-  static const String chatScreen = '/chat-screen';
-  static const String conversationScreen = '/conversation-screen';
+  static const String allMessagesScreen = '/all-messages-screen';
+
 
   static Map<String, WidgetBuilder> routes = {
     onboarding: (context) => OnBoard(),
@@ -57,11 +66,20 @@ class AppRoutes {
     notificationScreen: (context) => NotificationScreen(),
     homeScreen: (context) => HomeScreen(),
     servicesScreen: (context) => RdvScreen(),
+   
+    mainScreen: (context) => BottomNavBar(),
+   
+    conversationScreen: (context) => ConversationScreen(),
+    audioCallScreen: (context) => AudioCallScreen(doctorName: "Dr. Marcus Horizon", doctorAvatar: "assets/images/doctor.png"),
+    videoCallScreen: (context) => VideoCallScreen(doctorName: "Dr. Marcus Horizon", doctorAvatar: "assets/images/doctor.png"),
+    chatScreen: (context) => ChatScreen(
+      conversationId: '',
+      doctorName: "Dr. Marcus Horizon", 
+      doctorAvatar: "assets/images/doctor.png"
+    ),
+    doctormainScreen: (context) => DoctorBottomNavBar(),
     doctorFormView: (context) => DoctorFormView(),
     doctorsListScreen: (context) => Doctorslistscreen(),
-    mainScreen: (context) => BottomNavBar(),
-    doctormainScreen: (context) => DoctorBottomNavBar(),
-    chatScreen: (context) => ChatScreen(),
-    conversationScreen: (context) => ConversationScreen(),
+    allMessagesScreen: (context) => AllMessagesScreen(),
   };
 }

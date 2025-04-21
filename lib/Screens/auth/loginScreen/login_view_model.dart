@@ -54,6 +54,12 @@ class LoginViewModel extends ChangeNotifier {
     } else if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
       return "Please enter a valid email address";
     }
+    
+    // Check for common email typos
+    if (value.contains("exaple.com")) {
+      return "Did you mean to use 'example.com'?";
+    }
+    
     return "";
   }
 

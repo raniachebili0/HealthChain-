@@ -13,28 +13,23 @@ import '../../services/socket_service.dart';
 import 'package:health_chain/models/user.dart';
 import 'package:health_chain/models/conversation.dart';
 import 'package:health_chain/models/message.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:health_chain/Screens/calling-screen.dart';
-import 'package:health_chain/services/socket_manager.dart' show SocketManager, ConnectionStatus;
-import 'package:health_chain/services/call_socket_manager.dart';
+import 'package:health_chain/services/socket_manager.dart';
 
-// String extension for capitalize method
-extension StringExtension on String {
-  String capitalize() {
-    return this.isEmpty ? '' : '${this[0].toUpperCase()}${this.substring(1)}';
-  }
-}
+
 
 class ChatScreen extends StatefulWidget {
   final String? conversationId;
   final String doctorName;
   final String doctorAvatar;
-
+  
   const ChatScreen({
-    super.key,
+    super.key, 
     this.conversationId,
-    this.doctorName = "Dr. Marcus Horizon",
-    this.doctorAvatar = "assets/images/doctor.png",
+    this.doctorName = "Dr. Marcus Horizon", 
+    this.doctorAvatar = "assets/images/doctor.png"
   });
 
   @override
@@ -50,103 +45,53 @@ class _ChatScreenState extends State<ChatScreen> {
   List<Message> _messages = [];
   bool _isLoadingUsers = false;
   bool _isLoadingChat = true;
-  bool _isLoading = true;
   String? _currentUserId;
   io.Socket? socket;
-  io.Socket? callSocket;
-
-  // Socket management
-  late SocketService socketService;
-
-  // Timer references
-  Timer? _messageRefreshTimer;
-  Timer? _typingTimer;
-  Timer? _refreshConversationsTimer;
+  Map<String, bool> _typingUsers = {};
+  
   Timer? _refreshTimer;
-  Timer? _autoRefreshTimer;
-  Timer? _callTimeoutTimer;
-
-  final Map<String, dynamic> _typingUsers = {};
   Set<String> _messageIds = {};
   bool _showNotificationBanner = false;
   Message? _notificationMessage;
-  DateTime _lastHttpRefresh = DateTime.now();
-  int _markAsReadErrorCount = 0;
-  int _autoRefreshAttempts = 0;
+  DateTime _lastHttpRefresh = DateTime.now(); // Track last HTTP refresh to prevent spam
+  int _markAsReadErrorCount = 0; // Track consecutive errors for mark as read
 
+  // Timer for auto-refresh
+  Timer? _autoRefreshTimer;
+  int _autoRefreshAttempts = 0;
+  
+  // SOCKET DEDICATED TO CALLS
+  io.Socket? callSocket;
   AlertDialog? _currentCallDialog;
   String pendingCallId = '';
   String pendingCallReceiverId = '';
   String pendingCallReceiverName = '';
   String pendingCallType = '';
   Map<String, dynamic> currentCallData = {};
-
-  String? _authToken;
-  bool _isSocketConnected = false;
-
-  // Load user ID from secure storage
-  Future<String?> _loadUserIdFromStorage() async {
-    try {
-      final storage = FlutterSecureStorage();
-
-      // Load auth token
-      _authToken = await storage.read(key: 'auth_token');
-      print('[AUTH] Loaded auth token: ${_authToken != null ? 'token found' : 'token missing'}');
-
-      final userId = await storage.read(key: 'user_id');
-      print('[USER] Loaded user ID from storage: $userId');
-
-      if (userId != null) {
-        setState(() {
-          _currentUserId = userId;
-        });
-      } else {
-        print('[USER ERROR] User ID not found in storage');
-        final userJson = await storage.read(key: 'user');
-        if (userJson != null) {
-          final userData = json.decode(userJson);
-          final id = userData['_id'] ?? userData['id'];
-          if (id != null) {
-            print('[USER] Found user ID in user object: $id');
-            setState(() {
-              _currentUserId = id;
-            });
-            return id;
-          }
-        }
-      }
-      return userId;
-    } catch (e) {
-      print('[USER ERROR] Error loading user ID: $e');
-      return null;
-    }
-  }
+  Timer? _callTimeoutTimer;
 
   @override
   void initState() {
     super.initState();
-
-    socketService = SocketService();
-
-    socketService.connectionStatus.listen((status) {
-      setState(() {
-        _isSocketConnected = status;
-      });
-    });
-
     _loadUserIdFromStorage().then((value) {
       setState(() {
         _isLoading = true;
       });
+      // Initialize the call socket
       _initializeCallSocket();
+      // Initialize the socket
       socketService.initializeSocket();
-      socketService.socket!.auth = {'token': _authToken};
-
-      socketService.connectionStatus.listen((status) {
+      socketService.socketInstance!.auth = {
+        'token': _authToken,
+      };
+      
+      // Keep track of socket connection status
+      socketService.connectionStatusStream.listen((status) {
         if (mounted) {
           setState(() {
             _isSocketConnected = status == ConnectionStatus.connected;
             if (_isSocketConnected) {
+              // Register socket events when connected
               _registerSocketEvents();
               if (_conversation != null) {
                 _joinConversationRoom(_conversation!.id);
@@ -156,40 +101,46 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       });
 
+      // Load conversation if we have an ID
       if (widget.conversationId != null) {
         _loadConversation(widget.conversationId!);
       }
     });
-
+    
+    // Connect to call socket with detailed logging
     _connectCallSocket();
+    
+    // Add this line to setup dedicated call listeners
     _setupDedicatedCallListeners();
-    _setupAutoRefresh();
   }
-
+  
   @override
   void dispose() {
+    // Clean up all timers
     _messageRefreshTimer?.cancel();
     _typingTimer?.cancel();
     _refreshConversationsTimer?.cancel();
-    _refreshTimer?.cancel();
-    _autoRefreshTimer?.cancel();
-    _callTimeoutTimer?.cancel();
-
-    if (socketService.socket != null) {
+    
+    // Clean up sockets
+    if (socketService.socketInstance != null) {
+      // Leave the room when component unmounts
       if (_conversation != null) {
-        socketService.socket!.emit('leave_conversation', {
+        socketService.socketInstance!.emit('leave_conversation', {
           'conversationId': _conversation!.id,
         });
       }
-      socketService.socket!.off('new_message');
-      socketService.socket!.off('typing');
-      socketService.socket!.off('stop_typing');
-      socketService.socket!.off('call_accepted');
-      socketService.socket!.off('call_rejected');
-      socketService.socket!.off('call_timeout');
-      socketService.socket!.off('call_ended');
+      
+      // Remove event listeners
+      socketService.socketInstance!.off('new_message');
+      socketService.socketInstance!.off('typing');
+      socketService.socketInstance!.off('stop_typing');
+      socketService.socketInstance!.off('call_accepted');
+      socketService.socketInstance!.off('call_rejected');
+      socketService.socketInstance!.off('call_timeout');
+      socketService.socketInstance!.off('call_ended');
     }
-
+    
+    // Clean up dedicated call socket
     if (callSocket != null) {
       callSocket!.off('incoming_call');
       callSocket!.off('call_request');
@@ -197,24 +148,28 @@ class _ChatScreenState extends State<ChatScreen> {
       callSocket = null;
       print("[CALL] Call socket disposed");
     }
-
-    _controller.dispose();
-    _scrollController.dispose();
+    
     super.dispose();
   }
 
   Future<void> _initializeApp() async {
+    // First, make sure we have the current user ID
     await _getCurrentUserId();
+    
     if (_currentUserId == null || _currentUserId!.isEmpty) {
       print("Failed to get current user ID during initialization");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please log in to use the chat feature')),
+        SnackBar(content: Text('Please log in to use the chat feature'))
       );
       return;
     }
-
+    
     print("Initializing chat with user ID: $_currentUserId");
+    
+    // Use SocketService instead of direct socket connection
     await _initializeSocketConnection();
+    
+    // If conversation ID is provided, load the conversation and messages
     if (widget.conversationId != null && widget.conversationId!.isNotEmpty) {
       await _loadConversation(widget.conversationId!);
     } else {
@@ -223,9 +178,11 @@ class _ChatScreenState extends State<ChatScreen> {
       });
       print("No conversation ID provided");
     }
-
+    
+    // Set up a timer to refresh messages periodically
     _startMessageRefreshTimer();
-
+    
+    // Safety timeout to prevent stuck loading state
     Future.delayed(Duration(seconds: 10), () {
       if (mounted && _isLoadingChat) {
         print("Safety timeout: Forcing loading state to false after 10 seconds");
@@ -235,16 +192,26 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     });
   }
-
+  
   Future<void> _initializeSocketConnection() async {
     try {
+      // Use the SocketService singleton
       SocketService socketService = SocketService();
       await socketService.initializeSocket();
+      
+      // Get the socket instance from the service
       socket = socketService.socket;
+      
       if (socket != null) {
         print("[CHAT] Socket obtained from SocketService");
+        
+        // Register for socket events
         _registerSocketEvents();
+        
+        // Register for call events immediately
         _setupCallEventListeners();
+        
+        // Join user's room to receive incoming calls
         _joinUserRoom();
       } else {
         print("[CHAT] Failed to get socket from SocketService");
@@ -253,12 +220,15 @@ class _ChatScreenState extends State<ChatScreen> {
       print("Error initializing socket connection: $e");
     }
   }
-
+  
+  // Join the user's room to receive direct notifications including calls
   void _joinUserRoom() {
     if (socket == null || _currentUserId == null) {
       print("[CHAT] Cannot join user room: socket not connected or user ID missing");
       return;
     }
+    
+    // Check if we have user ID
     if (_currentUserId == null || _currentUserId!.isEmpty) {
       print("[CHAT] Cannot join user room: user ID is empty");
       _getCurrentUserId().then((_) {
@@ -268,60 +238,89 @@ class _ChatScreenState extends State<ChatScreen> {
       });
       return;
     }
+
     _joinUserRoomAfterIdCheck();
   }
 
+  // Helper method after user ID check
   void _joinUserRoomAfterIdCheck() {
     if (socket == null || _currentUserId == null) return;
+    
+    // First ensure we're connected
     if (!socket!.connected) {
       print("[CHAT] Socket not connected, attempting to connect before joining room");
       socket!.connect();
+      
+      // Wait for connection and then join
       socket!.onConnect((_) {
         _emitJoinUserRoom();
       });
       return;
     }
+    
+    // Already connected, join immediately
     _emitJoinUserRoom();
   }
 
+  // Emit the join_user_room event
   void _emitJoinUserRoom() {
     print("[CHAT] Joining user room for userId: $_currentUserId");
+    
+    // Join the personal room for direct communication
     socket!.emit('join_user_room', {'userId': _currentUserId});
+    
+    // Also join a room named after the user ID for compatibility with some socket systems
     socket!.emit('join', {'room': _currentUserId});
+    
+    // Debug message to confirm join attempt
     print("[CHAT] Emit: join_user_room and join with userId: $_currentUserId");
   }
 
   void _registerSocketEvents() {
     if (socket == null) return;
-
+    
     socket!.onConnect((_) {
       print('[CHAT] Socket connected successfully in chat screen');
+      
+      // Set up call listeners immediately when socket connects
       _setupCallEventListeners();
+      
+      // Join the user's room to receive direct messages and calls
       _joinUserRoom();
+      
+      // Join conversation room if we have a conversation ID
       if (widget.conversationId != null && widget.conversationId!.isNotEmpty) {
         print('[CHAT] Joining conversation room: ${widget.conversationId}');
         socket!.emit('join_conversation', {
           'conversationId': widget.conversationId,
-          'userId': _currentUserId,
+          'userId': _currentUserId
         });
+        
+        // Also join any loaded conversation
         if (_conversation != null && _conversation!.id != widget.conversationId) {
           print('[CHAT] Joining additional conversation room: ${_conversation!.id}');
           socket!.emit('join_conversation', {
             'conversationId': _conversation!.id,
-            'userId': _currentUserId,
+            'userId': _currentUserId
           });
         }
+        
+        // Start message polling using socket
         _startSocketPolling();
       } else if (_conversation != null) {
         print('[CHAT] Joining conversation room: ${_conversation!.id}');
         socket!.emit('join_conversation', {
           'conversationId': _conversation!.id,
-          'userId': _currentUserId,
+          'userId': _currentUserId
         });
+        
+        // Start message polling using socket
         _startSocketPolling();
       } else {
         print('[CHAT] No conversation to join');
       }
+      
+      // Emit a presence event to let others know we're online
       if (_currentUserId != null) {
         socket!.emit('user_online', {'userId': _currentUserId});
         print('[CHAT] Emitted user_online for $_currentUserId');
@@ -334,37 +333,56 @@ class _ChatScreenState extends State<ChatScreen> {
         print('Message data: ${data['message']}');
         try {
           final message = Message.fromJson(data['message']);
+          
+          // Check if this message already exists in our list
           if (message.id.isEmpty) {
             print('Ignored message with empty ID');
             return;
           }
+          
+          // Skip temporary messages from the socket response
           if (message.id.contains('_temp')) {
             print('Ignored temporary message from socket');
             return;
           }
+          
+          // More robust duplicate detection by ID
           if (_messageIds.contains(message.id)) {
             print('Ignored duplicate message with ID: ${message.id}');
             return;
           }
-          final similiarMessages = _messages.where((msg) =>
-              msg.content == message.content &&
-              msg.senderId == message.senderId &&
-              !msg.id.contains('_temp') &&
-              DateTime.now().difference(msg.createdAt).inSeconds < 10).toList();
+          
+          // Enhanced duplicate detection for messages with same content
+          final similiarMessages = _messages.where((msg) => 
+            msg.content == message.content &&
+            msg.senderId == message.senderId &&
+            !msg.id.contains('_temp') &&
+            DateTime.now().difference(msg.createdAt).inSeconds < 10
+          ).toList();
+          
           if (similiarMessages.isNotEmpty) {
             print('Ignored duplicate message with similar content sent within the last 10 seconds');
             return;
           }
+          
+          // Handle our own messages differently from others' messages
           if (message.senderId == _currentUserId) {
-            final tempIndices = _messages.where((msg) =>
-                msg.id.contains('_temp') &&
-                msg.content == message.content &&
-                msg.senderId == _currentUserId &&
-                DateTime.now().difference(msg.createdAt).inMinutes < 2).toList();
+            // This is our own message - check if we already have a temp version of it
+            final tempIndices = _messages.where((msg) => 
+              msg.id.contains('_temp') && 
+              msg.content == message.content &&
+              msg.senderId == _currentUserId &&
+              DateTime.now().difference(msg.createdAt).inMinutes < 2
+            ).toList();
+            
             if (tempIndices.isNotEmpty) {
               print('Received confirmation of our own recent message: ${message.content}');
+              
+              // If we have a temporary version, update it instead of adding a duplicate
               setState(() {
+                // Only keep the first temp message and replace it with the real one
                 if (tempIndices.length > 1) {
+                  // Remove all but the first temp message
                   for (int i = 1; i < tempIndices.length; i++) {
                     int idx = _messages.indexOf(tempIndices[i]);
                     if (idx >= 0) {
@@ -373,6 +391,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     }
                   }
                 }
+                
+                // Replace the remaining temp message with the real one
                 final idx = _messages.indexOf(tempIndices[0]);
                 if (idx >= 0) {
                   _messageIds.remove(_messages[idx].id);
@@ -380,22 +400,34 @@ class _ChatScreenState extends State<ChatScreen> {
                   _messageIds.add(message.id);
                 }
               });
-              return;
+              return; // Skip adding a new message
             }
           }
+          
+          // If it passes all checks, it's a new message to add
           setState(() {
             _messages.add(message);
             _messageIds.add(message.id);
             _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+            
+            // Give immediate feedback for new messages from others
             if (message.senderId != _currentUserId) {
+              // Request haptic feedback for a stronger notification
               HapticFeedback.mediumImpact();
+              
+              // Show notification banner for new messages when user is not at bottom
               showNotificationBanner(message);
             }
           });
+          
           print('Added new message from ${message.sender?.name ?? "Unknown"}: ${message.content}');
+          
+          // Play notification sound and vibrate for messages from others
           if (message.senderId != _currentUserId) {
+            // Scroll to the bottom after adding the new message
             _scrollToBottom();
           } else {
+            // For our own messages, mark as read and scroll
             _scrollToBottom();
           }
         } catch (e) {
@@ -405,16 +437,21 @@ class _ChatScreenState extends State<ChatScreen> {
         print('Invalid message data received');
       }
     });
-
+    
     socket!.on('message_notification', (data) {
       print('Received message notification');
       if (data != null && data['message'] != null) {
         try {
           final message = Message.fromJson(data['message']);
           final conversationId = data['conversationId'];
+          
+          // Only provide subtle vibration feedback 
           if (_conversation == null || _conversation!.id != conversationId) {
             HapticFeedback.lightImpact();
+            
+            // Show a system notification banner for messages from other conversations
             if (message.senderId != _currentUserId) {
+              // Display notification for messages from other conversations
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Row(
@@ -452,6 +489,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   action: SnackBarAction(
                     label: 'VIEW',
                     onPressed: () {
+                      // Navigate to the conversation
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -466,6 +504,7 @@ class _ChatScreenState extends State<ChatScreen> {
               );
             }
           } else {
+            // Show notification for messages in the current conversation
             if (message.senderId != _currentUserId) {
               showNotificationBanner(message);
             }
@@ -475,19 +514,23 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       }
     });
-
+    
     socket!.on('messages_update', (data) {
       print('Received messages_update from socket polling');
+      // Check if component is still mounted before processing update
       if (!mounted) {
         print('[CHAT] Component unmounted, ignoring messages_update event');
         return;
       }
+      
       if (data != null && data['messages'] != null && data['conversationId'] != null) {
         try {
           if (_conversation != null && _conversation!.id == data['conversationId']) {
             final List<dynamic> messageList = data['messages'];
             final List<Message> updatedMessages = [];
             Set<String> updatedMessageIds = {};
+            
+            // Parse all messages
             for (final msgData in messageList) {
               try {
                 final msg = Message.fromJson(msgData);
@@ -499,27 +542,45 @@ class _ChatScreenState extends State<ChatScreen> {
                 print('Error parsing message in update: $e');
               }
             }
+            
+            // Only update if we have new messages (that aren't already in our tracked IDs)
             final Set<String> newMessageIds = updatedMessageIds.difference(_messageIds);
             if (newMessageIds.isNotEmpty) {
               print('Adding ${newMessageIds.length} new messages from update');
+              
+              // Check if component is still mounted before calling setState
               if (mounted) {
                 setState(() {
+                  // Keep only temporary messages that might not be on server yet
                   final tempMessages = _messages.where((msg) => msg.id.contains('_temp')).toList();
+                  
+                  // Build a list of all messages we know about
                   final allMessages = <Message>[];
+                  
+                  // First, add existing messages we want to keep
                   for (final msg in _messages) {
+                    // Keep if it's a temp message or it's in the updated messages list
                     if (msg.id.contains('_temp') || updatedMessageIds.contains(msg.id)) {
                       allMessages.add(msg);
                     }
                   }
+                  
+                  // Then add any new messages that weren't in our list
                   for (final msg in updatedMessages) {
                     if (!_messageIds.contains(msg.id)) {
                       allMessages.add(msg);
                     }
                   }
+                  
+                  // Update our tracked state
                   _messages = allMessages;
                   _messageIds = {...updatedMessageIds, ...tempMessages.map((msg) => msg.id).toSet()};
+                  
+                  // Sort messages
                   _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
                 });
+                
+                // Scroll to bottom after updating messages
                 _scrollToBottom();
               } else {
                 print('[CHAT] Component unmounted, skipping setState in messages_update');
@@ -537,6 +598,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _getCurrentUserId() async {
     try {
+      // Try to get user_id directly (from user_id storage key)
       final userId = await storage.read(key: 'user_id');
       if (userId != null && userId.isNotEmpty) {
         setState(() {
@@ -545,6 +607,8 @@ class _ChatScreenState extends State<ChatScreen> {
         print("Current user ID retrieved from user_id: $_currentUserId");
         return;
       }
+      
+      // As fallback, try to get from user object if it exists
       final userJson = await storage.read(key: 'user');
       if (userJson != null) {
         final userData = json.decode(userJson);
@@ -553,14 +617,20 @@ class _ChatScreenState extends State<ChatScreen> {
             _currentUserId = userData['_id'];
           });
           print("Current user ID retrieved from user object: $_currentUserId");
+          
+          // Save it to user_id for future reference
           await storage.write(key: 'user_id', value: _currentUserId);
           return;
         }
       }
+      
       print("No user ID found in secure storage, trying to get it from token");
+      
+      // Last resort: try to get from token
       final token = await storage.read(key: 'auth_token');
       if (token != null && token.isNotEmpty) {
         try {
+          // Call the backend to get user information
           final response = await http.get(
             Uri.parse('${ApiConfig.baseUrl}/users/me'),
             headers: {
@@ -568,12 +638,14 @@ class _ChatScreenState extends State<ChatScreen> {
               'Authorization': 'Bearer $token',
             },
           );
+          
           if (response.statusCode == 200) {
             final userData = json.decode(response.body);
             if (userData['_id'] != null) {
               setState(() {
                 _currentUserId = userData['_id'];
               });
+              // Save it for future reference
               await storage.write(key: 'user_id', value: _currentUserId);
               print("Current user ID retrieved from API: $_currentUserId");
               return;
@@ -585,12 +657,14 @@ class _ChatScreenState extends State<ChatScreen> {
           print("Error fetching user information from API: $e");
         }
       }
+      
       print("All methods to get user ID failed");
     } catch (e) {
       print("Error getting current user: $e");
     }
   }
 
+  // Alias for _getCurrentUserId to match the call in initState
   Future<void> _getCurrentUser() async {
     await _getCurrentUserId();
   }
@@ -598,79 +672,115 @@ class _ChatScreenState extends State<ChatScreen> {
   void _startSocketPolling() {
     if (socket == null) {
       print('Cannot start polling: socket is null');
-      return;
-    }
+        return;
+      }
+
+    // Tell the server to start sending us updates for the current conversation
     if (_conversation != null) {
       print('Starting message polling via socket for: ${_conversation!.id}');
       socket?.emit('start_messages_polling', {
         'conversationId': _conversation!.id,
-        'interval': 2000,
+        'interval': 2000 // Refresh more frequently (every 2 seconds)
       });
+      
+      // Also immediately request a full update to ensure we have the latest messages
       socket?.emit('request_messages_update', {
-        'conversationId': _conversation!.id,
-        'userId': _currentUserId,
-      });
+            'conversationId': _conversation!.id,
+            'userId': _currentUserId
+          });
     }
-    if (widget.conversationId != null &&
-        widget.conversationId!.isNotEmpty &&
+    
+    // Also poll for the widget's conversation if different
+    if (widget.conversationId != null && 
+        widget.conversationId!.isNotEmpty && 
         (_conversation == null || widget.conversationId != _conversation!.id)) {
       print('Starting additional message polling for: ${widget.conversationId}');
       socket?.emit('start_messages_polling', {
         'conversationId': widget.conversationId,
-        'interval': 2000,
+        'interval': 2000 // Refresh more frequently (every 2 seconds)
       });
+      
+      // Also immediately request a full update for this conversation
       socket?.emit('request_messages_update', {
         'conversationId': widget.conversationId,
-        'userId': _currentUserId,
+        'userId': _currentUserId
       });
     }
   }
 
   void _startMessageRefreshTimer() {
+    // Cancel any existing timer
     _refreshTimer?.cancel();
+    
+    // Get SocketService to monitor connection status properly
     final SocketService socketService = SocketService();
+    
+    // Counter for consecutive HTTP fallbacks to prevent infinite loops
     int consecutiveHttpFallbacks = 0;
     final int maxConsecutiveHttpFallbacks = 5;
-
+    
+    // Set up a new timer for less frequent refreshes (every 5 seconds instead of 1)
+    // This prevents excessive HTTP calls when socket is disconnected
     _refreshTimer = Timer.periodic(Duration(seconds: 5), (timer) {
+      // Check if still mounted before proceeding
       if (!mounted) {
         print('[CHAT] Component unmounted, cancelling refresh timer');
         timer.cancel();
         return;
       }
+      
       if (_conversation != null) {
+        // Only refresh via HTTP if we've waited at least 5 seconds since last refresh
+        // This prevents rapid consecutive HTTP calls
         if (DateTime.now().difference(_lastHttpRefresh).inSeconds >= 5) {
+          // Check if socket is connected using the public getter
           bool isSocketConnected = socketService.isConnected;
+          
           if (isSocketConnected) {
+            // Socket is connected, use socket for real-time updates
             socketService.emit('request_messages_update', {
               'conversationId': _conversation!.id,
-              'userId': _currentUserId,
+              'userId': _currentUserId
             });
-            consecutiveHttpFallbacks = 0;
+            consecutiveHttpFallbacks = 0; // Reset counter on successful socket usage
           } else {
+            // Fall back to HTTP polling if socket is not connected
             consecutiveHttpFallbacks++;
+            
             if (consecutiveHttpFallbacks <= maxConsecutiveHttpFallbacks) {
               print('[CHAT] Socket not connected, using HTTP to refresh conversations (attempt $consecutiveHttpFallbacks/$maxConsecutiveHttpFallbacks)');
-              _lastHttpRefresh = DateTime.now();
-              fetchMessages(_conversation!.id, true); // Use silent refresh for polling
+              _lastHttpRefresh = DateTime.now(); // Update timestamp to prevent spam
+              fetchMessages(_conversation!.id);
+              
+              // Check socket manager diagnostics to troubleshoot connection issues
               _logSocketDiagnostics(socketService);
+              
+              // Attempt to reconnect the socket
               socketService.reconnect();
             } else {
               print('[CHAT] Too many consecutive HTTP fallbacks ($consecutiveHttpFallbacks). Pausing refresh timer for 30 seconds.');
+              
+              // Pause the timer for 30 seconds to give the socket time to recover
               timer.cancel();
+              
+              // Display a user-friendly message
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Network connection issues detected. Trying to reconnect...'),
                     duration: Duration(seconds: 5),
-                  ),
+                  )
                 );
               }
+              
+              // Try one more aggressive reconnection
               _attemptAggressiveReconnection(socketService);
+              
+              // Restart the timer after a pause to allow connection recovery
               Future.delayed(Duration(seconds: 30), () {
                 if (mounted) {
-                  consecutiveHttpFallbacks = 0;
-                  _startMessageRefreshTimer();
+                  consecutiveHttpFallbacks = 0; // Reset counter
+                  _startMessageRefreshTimer(); // Restart timer with fresh state
                 }
               });
             }
@@ -679,7 +789,8 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     });
   }
-
+  
+  // Helper method to log socket diagnostics
   void _logSocketDiagnostics(SocketService socketService) {
     try {
       final diagnostics = socketService.getDiagnosticInfo();
@@ -691,13 +802,17 @@ class _ChatScreenState extends State<ChatScreen> {
       print('[CHAT] Unable to get socket diagnostics: $e');
     }
   }
-
+  
+  // Attempt an aggressive reconnection strategy
   Future<void> _attemptAggressiveReconnection(SocketService socketService) async {
     print('[CHAT] Attempting aggressive socket reconnection');
+    
     try {
+      // First, try to get a fresh auth token if possible
       final storage = FlutterSecureStorage();
       final token = await storage.read(key: 'auth_token');
       final userId = await storage.read(key: 'user_id');
+      
       if (token != null && userId != null) {
         print('[CHAT] Reinitializing socket with fresh credentials');
         await socketService.reinitializeWithCredentials(token, userId);
@@ -714,6 +829,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       _isLoadingChat = true;
     });
+    
     try {
       final token = await storage.read(key: 'auth_token');
       if (token == null) {
@@ -723,6 +839,8 @@ class _ChatScreenState extends State<ChatScreen> {
         });
         return;
       }
+      
+      // Get conversation details
       final conversationResponse = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/messages/conversations/$conversationId'),
         headers: {
@@ -730,20 +848,29 @@ class _ChatScreenState extends State<ChatScreen> {
           'Authorization': 'Bearer $token',
         },
       );
+      
       if (conversationResponse.statusCode == 200) {
         final conversationData = json.decode(conversationResponse.body);
         setState(() {
           _conversation = Conversation.fromJson(conversationData);
         });
+        
+        // Make sure to join the conversation room via socket
         if (socket?.connected == true) {
-          print('Joining conversation room after loading: $conversationId');
+          print('Joining conversation room after loading: ${conversationId}');
           socket?.emit('join_conversation', {
             'conversationId': conversationId,
-            'userId': _currentUserId,
+            'userId': _currentUserId
           });
+          
+          // Start message polling
           _startSocketPolling();
         }
-        await fetchMessages(conversationId, false); // Normal refresh with animation after loading conversation
+        
+        // Now fetch messages for this conversation
+        await fetchMessages(conversationId);
+        
+        // Mark all messages as read
         await markMessagesAsRead(conversationId);
       } else {
         print("Failed to load conversation: ${conversationResponse.statusCode}");
@@ -757,6 +884,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _isLoadingChat = false;
       });
     } finally {
+      // Ensure loading state is turned off even if there's an uncaught exception
       if (mounted) {
         setState(() {
           _isLoadingChat = false;
@@ -769,6 +897,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       _isLoadingUsers = true;
     });
+    
     try {
       final token = await storage.read(key: 'auth_token');
       if (token == null) {
@@ -778,6 +907,7 @@ class _ChatScreenState extends State<ChatScreen> {
         });
         return;
       }
+      
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/users/all'),
         headers: {
@@ -785,6 +915,7 @@ class _ChatScreenState extends State<ChatScreen> {
           'Authorization': 'Bearer $token',
         },
       ).timeout(Duration(seconds: 10));
+      
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         setState(() {
@@ -805,84 +936,67 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> fetchMessages([String? conversationId, bool silentRefresh = false]) async {
+  Future<void> fetchMessages([String? conversationId]) async {
+    // Avoid concurrent fetches by checking if we're already loading
     if (_isLoadingChat) {
       print("Already fetching messages, skipping this request");
       return;
     }
     
-    // Only log detailed debug info if not silent refreshing
-    if (!silentRefresh) {
-      print("=== FETCH MESSAGES DEBUG ===");
-      print("Starting fetchMessages with conversationId: ${conversationId ?? 'null'}");
-    }
+    print("=== FETCH MESSAGES DEBUG ===");
+    print("Starting fetchMessages with conversationId: ${conversationId ?? 'null'}");
     
-    // Only show loading indicator if not silent refreshing
-    if (!silentRefresh) {
-      setState(() {
-        _isLoadingChat = true;
-      });
-    }
+    setState(() {
+      _isLoadingChat = true;
+    });
     
     try {
       if (_currentUserId == null || _currentUserId!.isEmpty) {
         print("No current user ID found when fetching messages, trying to retrieve it");
         await _getCurrentUserId();
+        
         if (_currentUserId == null || _currentUserId!.isEmpty) {
           print("Still unable to get current user ID");
-          if (!silentRefresh) {
-            setState(() {
-              _isLoadingChat = false;
-            });
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Unable to load messages: User ID not found')),
-            );
-          }
-          return;
-        }
-      }
-      
-      if (!silentRefresh) {
-        print("Fetching messages with user ID: $_currentUserId");
-      }
-      
-      final token = await storage.read(key: 'auth_token');
-      if (!silentRefresh) {
-        print("Auth token available: ${token != null && token.isNotEmpty}");
-      }
-      
-      if (token == null || token.isEmpty) {
-        print("No auth token found when fetching messages");
-        if (!silentRefresh) {
           setState(() {
             _isLoadingChat = false;
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Unable to load messages: Not authenticated')),
+            SnackBar(content: Text('Unable to load messages: User ID not found'))
           );
+          return;
         }
+      }
+
+      print("Fetching messages with user ID: $_currentUserId");
+      
+      final token = await storage.read(key: 'auth_token');
+      print("Auth token available: ${token != null && token.isNotEmpty}");
+      
+      if (token == null || token.isEmpty) {
+        print("No auth token found when fetching messages");
+        setState(() {
+          _isLoadingChat = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unable to load messages: Not authenticated'))
+        );
         return;
       }
       
+      // Use the provided conversationId or fall back to the current conversation's id
       final String convoId = conversationId ?? _conversation?.id ?? '';
-      if (!silentRefresh) {
-        print("Using conversation ID: $convoId");
-      }
+      print("Using conversation ID: $convoId");
       
       if (convoId.isEmpty) {
         print("No conversation ID available for fetching messages");
-        if (!silentRefresh) {
-          setState(() {
-            _isLoadingChat = false;
-          });
-        }
+        setState(() {
+          _isLoadingChat = false;
+        });
         return;
       }
       
-      if (!silentRefresh) {
-        print("Fetching messages for conversation: $convoId with user: $_currentUserId");
-        print("API URL: ${ApiConfig.baseUrl}/messages/conversations/$convoId/messages?userId=$_currentUserId");
-      }
+      print("Fetching messages for conversation: $convoId with user: $_currentUserId");
+      print("API URL: ${ApiConfig.baseUrl}/messages/conversations/$convoId/messages?userId=$_currentUserId");
       
       try {
         final response = await http.get(
@@ -893,20 +1007,15 @@ class _ChatScreenState extends State<ChatScreen> {
           },
         ).timeout(Duration(seconds: 10));
         
-        if (!silentRefresh) {
-          print("API response status code: ${response.statusCode}");
-        }
+        print("API response status code: ${response.statusCode}");
         
         if (response.statusCode == 200) {
-          if (!silentRefresh) {
-            print("Response body: ${response.body.substring(0, math.min(100, response.body.length))}...");
-          }
+          print("Response body: ${response.body.substring(0, math.min(100, response.body.length))}...");
           
           final List<dynamic> data = json.decode(response.body);
-          if (!silentRefresh) {
-            print("Successfully fetched ${data.length} messages from API");
-          }
+          print("Successfully fetched ${data.length} messages from API");
           
+          // Create a proper List<Message> by carefully handling each message
           final List<Message> messages = [];
           int validMessageCount = 0;
           int invalidMessageCount = 0;
@@ -914,113 +1023,99 @@ class _ChatScreenState extends State<ChatScreen> {
           for (var msgData in data) {
             try {
               final msg = Message.fromJson(msgData);
+              // Only add valid messages with non-empty content
               if (msg.id.isNotEmpty) {
                 messages.add(msg);
                 validMessageCount++;
               } else {
                 invalidMessageCount++;
-                if (!silentRefresh) {
-                  print("Skipping message with empty ID: $msgData");
-                }
+                print("Skipping message with empty ID: $msgData");
               }
             } catch (parseError) {
               invalidMessageCount++;
-              if (!silentRefresh) {
-                print("Error parsing message: $parseError");
-                print("Problematic message data: $msgData");
-              }
+              print("Error parsing message: $parseError");
+              print("Problematic message data: $msgData");
             }
           }
           
-          if (!silentRefresh) {
-            print("Processed $validMessageCount valid messages, skipped $invalidMessageCount invalid messages");
-          }
+          print("Processed $validMessageCount valid messages, skipped $invalidMessageCount invalid messages");
           
+          // Sort messages by creation time (most recent last)
           messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
           
-          // Create a set of the new message IDs
-          final newMessageIds = messages.map((msg) => msg.id).toSet();
+          // Store existing message IDs to check for duplicates when receiving socket messages
+          _messageIds = messages.map((msg) => msg.id).toSet();
           
-          // Calculate what messages are actually new
-          final actuallyNewMessages = newMessageIds.difference(_messageIds);
-          
-          if (!silentRefresh) {
-            print("Message count after sorting: ${messages.length}");
-            if (messages.isNotEmpty) {
-              print("First message: ${messages.first.content}");
-              print("Last message: ${messages.last.content}");
-            } else {
-              print("No messages returned from API - this may be normal for a new conversation");
-            }
+          print("Message count after sorting: ${messages.length}");
+          if (messages.isNotEmpty) {
+            print("First message: ${messages.first.content}");
+            print("Last message: ${messages.last.content}");
+          } else {
+            print("No messages returned from API - this may be normal for a new conversation");
           }
           
+          // Make sure we're updating the UI on the main thread
           if (mounted) {
             setState(() {
               _messages = messages;
-              _messageIds = newMessageIds;
               _isLoadingChat = false;
             });
             
             if (_messages.isNotEmpty) {
-              if (!silentRefresh) {
-                print("Setting state with ${_messages.length} messages");
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _scrollToBottom(animate: !silentRefresh);
-                });
-              } else if (actuallyNewMessages.isNotEmpty) {
-                // If we got new messages during silent refresh, scroll to bottom without animation
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _scrollToBottom(animate: false);
-                });
-              }
-            } else if (!silentRefresh) {
+              print("Setting state with ${_messages.length} messages");
+              // Ensure we scroll to the bottom after messages are loaded
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _scrollToBottom();
+              });
+            } else {
               print("No messages to display after processing");
             }
           }
           
+          // After loading the messages, mark them as read immediately
+          // This ensures the notification badges are removed for the current conversation
           await markMessagesAsRead(convoId);
         } else {
           print("Failed to load messages: ${response.statusCode}");
           print("Response body: ${response.body}");
-          if (mounted && !silentRefresh) {
+          if (mounted) {
             setState(() {
               _isLoadingChat = false;
             });
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to load messages: Server error')),
+              SnackBar(content: Text('Failed to load messages: Server error'))
             );
           }
         }
       } catch (e) {
         print("Error fetching messages: $e");
-        if (mounted && !silentRefresh) {
+        if (mounted) {
           setState(() {
             _isLoadingChat = false;
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to load messages: ${e.toString().substring(0, math.min(e.toString().length, 50))}...')),
+            SnackBar(content: Text('Failed to load messages: ${e.toString().substring(0, math.min(e.toString().length, 50))}...'))
           );
         }
       }
     } catch (e) {
       print("Error in fetchMessages: $e");
-      if (mounted && !silentRefresh) {
+      if (mounted) {
         setState(() {
           _isLoadingChat = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load messages: ${e.toString().substring(0, math.min(e.toString().length, 50))}...')),
+          SnackBar(content: Text('Failed to load messages: ${e.toString().substring(0, math.min(e.toString().length, 50))}...'))
         );
       }
     } finally {
-      if (mounted && !silentRefresh) {
+      // Ensure loading state is always turned off even if there's an uncaught exception
+      if (mounted) {
         Future.delayed(Duration(seconds: 1), () {
           setState(() {
             _isLoadingChat = false;
           });
-          if (!silentRefresh) {
-            print("=== END FETCH MESSAGES DEBUG ===");
-          }
+          print("=== END FETCH MESSAGES DEBUG ===");
         });
       }
     }
@@ -1028,20 +1123,26 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> markMessagesAsRead(String conversationId) async {
     try {
+      // If we've seen too many consecutive 404 errors, stop trying to mark as read
       if (_markAsReadErrorCount >= 3) {
         print("Skipping markMessagesAsRead due to repeated 404 errors");
         return;
       }
+      
       if (_currentUserId == null || _currentUserId!.isEmpty) {
         print("No current user ID found when marking messages as read");
         return;
       }
+
       final token = await storage.read(key: 'auth_token');
       if (token == null || token.isEmpty) {
         print("No auth token found when marking messages as read");
         return;
       }
+      
       print("Marking messages as read for conversation: $conversationId");
+      
+      // Make API call to mark messages as read
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/messages/conversations/$conversationId/read'),
         headers: {
@@ -1052,19 +1153,29 @@ class _ChatScreenState extends State<ChatScreen> {
           'userId': _currentUserId,
         }),
       );
+      
       if (response.statusCode == 200) {
         print("Successfully marked messages as read");
-        _markAsReadErrorCount = 0;
+        _markAsReadErrorCount = 0; // Reset error count on success
+        
+        // Demander au serveur d'envoyer une mise à jour des conversations
+        // Cela va automatiquement mettre à jour l'écran des conversations
         socket?.emit('request_conversations_update', {
-          'userId': _currentUserId,
+          'userId': _currentUserId
         });
+        
+        // Émettre un événement pour informer qu'on a lu des messages
         socket?.emit('message_read', {
           'conversationId': conversationId,
-          'userId': _currentUserId,
+          'userId': _currentUserId
         });
+        
+        // Update UI to reflect read status
         setState(() {
+          // Update all messages from other users to read=true
           for (int i = 0; i < _messages.length; i++) {
             if (_messages[i].senderId != _currentUserId && !_messages[i].read) {
+              // Create a copy of the message with read=true
               _messages[i] = Message(
                 id: _messages[i].id,
                 senderId: _messages[i].senderId,
@@ -1080,6 +1191,8 @@ class _ChatScreenState extends State<ChatScreen> {
         });
       } else {
         print("Failed to mark messages as read: ${response.statusCode}");
+        
+        // Increment error count for 404 errors
         if (response.statusCode == 404) {
           _markAsReadErrorCount++;
           if (_markAsReadErrorCount >= 3) {
@@ -1094,29 +1207,40 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> sendMessage(String content) async {
     if (content.trim().isEmpty || _conversation == null) return;
+
     _controller.clear();
+    
+    // Clear typing status
     _setTyping(false);
+
     try {
+      // Check if we have current user ID, if not try to get it
       if (_currentUserId == null || _currentUserId!.isEmpty) {
         print("No current user ID found when sending message, trying to retrieve it");
         await _getCurrentUserId();
+        
         if (_currentUserId == null || _currentUserId!.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Unable to send message: User ID not found')),
+            SnackBar(content: Text('Unable to send message: User ID not found'))
           );
           return;
         }
       }
+
+      // Get auth token
       final token = await storage.read(key: 'auth_token');
       if (token == null || token.isEmpty) {
         print("No auth token found when sending message");
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unable to send message: Not authenticated')),
+          SnackBar(content: Text('Unable to send message: Not authenticated'))
         );
         return;
       }
+      
+      // Get proper user name (if available)
       String userName = "You";
       String userAvatar = 'assets/images/avatar.png';
+      
       final userJson = await storage.read(key: 'user');
       if (userJson != null) {
         try {
@@ -1131,15 +1255,23 @@ class _ChatScreenState extends State<ChatScreen> {
           print("Error parsing user data: $e");
         }
       }
+
+      // Generate a temporary ID for optimistic UI update
       final tempId = "${DateTime.now().millisecondsSinceEpoch}_temp";
-      final recentSimilarMessages = _messages.where((msg) =>
-          msg.senderId == _currentUserId &&
-          msg.content == content &&
-          DateTime.now().difference(msg.createdAt).inSeconds < 5).toList();
+      
+      // Check if we've already sent a similar message in the last 5 seconds
+      final recentSimilarMessages = _messages.where((msg) => 
+        msg.senderId == _currentUserId &&
+        msg.content == content &&
+        DateTime.now().difference(msg.createdAt).inSeconds < 5
+      ).toList();
+      
       if (recentSimilarMessages.isNotEmpty) {
         print("Prevented duplicate send of message: $content");
-        return;
+        return;  // Skip sending duplicate message
       }
+      
+      // Optimistically add message to UI
       final tempMessage = Message(
         id: tempId,
         senderId: _currentUserId!,
@@ -1147,19 +1279,29 @@ class _ChatScreenState extends State<ChatScreen> {
         createdAt: DateTime.now(),
         conversationId: _conversation!.id,
         sender: User(
-          id: _currentUserId!,
-          name: userName,
-          avatar: userAvatar,
-          role: 'user',
+          id: _currentUserId!, 
+          name: userName, 
+          avatar: userAvatar, 
+          role: 'user'
         ),
       );
+      
+      // Add message to UI
       setState(() {
         _messages.add(tempMessage);
+        // Add to tracking set to prevent duplicates
         _messageIds.add(tempId);
+        // Re-sort messages (not really needed for newly added message, but for consistency)
         _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
       });
+      
+      // Scroll to the bottom after adding message
       _scrollToBottom();
+
+      // Create a flag to track if message is confirmed
       bool messageConfirmed = false;
+
+      // Send via HTTP to ensure it's stored in database
       try {
         print("Sending message via HTTP to store it");
         final response = await http.post(
@@ -1171,44 +1313,66 @@ class _ChatScreenState extends State<ChatScreen> {
           body: json.encode({
             'content': content,
             'conversationId': _conversation!.id,
-            'tempId': tempId,
+            'tempId': tempId,  // Include tempId to help with mapping
           }),
         );
+        
         if (response.statusCode == 201) {
           print("Message successfully sent and stored via HTTP");
           messageConfirmed = true;
+          
+          // Demander au serveur d'envoyer une mise à jour des conversations
+          // Cela va automatiquement mettre à jour l'écran des conversations
           socket?.emit('request_conversations_update', {
-            'userId': _currentUserId,
+            'userId': _currentUserId
           });
+          
+          // Message successfully stored - update the temporary message with real data
           final messageData = json.decode(response.body);
+          
           try {
             final realMessage = Message.fromJson(messageData);
+            
+            // Find and update the temporary message with the real one from the server
             setState(() {
+              // Remove temp ID from tracking
               _messageIds.remove(tempId);
+              
+              // Find the temp message
               final index = _messages.indexWhere((msg) => msg.id == tempId);
               if (index >= 0) {
+                // Replace with real message
                 _messages[index] = realMessage;
+                
+                // Add real ID to tracking
                 if (realMessage.id.isNotEmpty) {
                   _messageIds.add(realMessage.id);
                 }
               }
             });
+            
+            // Update UI to show check mark immediately inside the message
             try {
+              // Find the temporary message we're confirming
               final tempMessageIndex = _messages.indexWhere((msg) => msg.id == tempId);
               if (tempMessageIndex >= 0) {
                 setState(() {
-                  HapticFeedback.lightImpact();
+                  // Add a delivery confirmation status to the UI
+                  HapticFeedback.lightImpact(); // Give a subtle vibration feedback
                 });
               }
             } catch (e) {
               print("Error updating UI: $e");
             }
+            
           } catch (parseError) {
             print("Error parsing real message data: $parseError");
           }
         } else {
           print("Failed to store message via HTTP: ${response.statusCode}");
           print("Response body: ${response.body}");
+          
+          // If HTTP storage fails, send via Socket as a fallback
           if (!messageConfirmed) {
             print("Sending message via socket as fallback for real-time delivery");
             socket?.emit('send_message', {
@@ -1216,46 +1380,44 @@ class _ChatScreenState extends State<ChatScreen> {
                 'content': content,
                 'conversationId': _conversation!.id,
                 'sender': _currentUserId,
-                'tempId': tempId,
-              },
+                'tempId': tempId,  // Include tempId to help with mapping
+              }
             });
           }
         }
       } catch (e) {
         print("Error sending message via HTTP: $e");
-        if (!messageConfirmed) {
+      
+        // If HTTP request fails, try socket as fallback
+      if (!messageConfirmed) {
           print("Sending message via socket as fallback for real-time delivery");
-          socket?.emit('send_message', {
-            'message': {
-              'content': content,
-              'conversationId': _conversation!.id,
-              'sender': _currentUserId,
-              'tempId': tempId,
-            },
-          });
+        socket?.emit('send_message', {
+          'message': {
+            'content': content,
+            'conversationId': _conversation!.id,
+            'sender': _currentUserId,
+              'tempId': tempId,  // Include tempId to help with mapping
+          }
+        });
         }
       }
     } catch (e) {
       print("Error sending message: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to send message: ${e.toString().substring(0, math.min(e.toString().length, 50))}...')),
+        SnackBar(content: Text('Failed to send message: ${e.toString().substring(0, math.min(e.toString().length, 50))}...'))
       );
     }
   }
 
-  void _scrollToBottom({bool animate = true}) {
+  // Method to scroll to the bottom of the messages list
+  void _scrollToBottom() {
     try {
       if (_scrollController.hasClients) {
-        if (animate) {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-          );
-        } else {
-          // Jump to bottom without animation
-          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-        }
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
       }
     } catch (e) {
       print("Error scrolling to bottom: $e");
@@ -1267,7 +1429,7 @@ class _ChatScreenState extends State<ChatScreen> {
       socket?.emit('typing', {
         'conversationId': _conversation!.id,
         'isTyping': isTyping,
-        'userId': _currentUserId,
+        'userId': _currentUserId
       });
     }
   }
@@ -1276,6 +1438,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_conversation == null || _conversation!.participantUsers == null || _conversation!.participantUsers!.isEmpty) {
       return widget.doctorName;
     }
+    
     final user = _conversation!.participantUsers!.first;
     return user.name;
   }
@@ -1284,6 +1447,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_conversation == null || _conversation!.participantUsers == null || _conversation!.participantUsers!.isEmpty) {
       return widget.doctorAvatar;
     }
+    
     final user = _conversation!.participantUsers!.first;
     return user.avatar;
   }
@@ -1296,19 +1460,27 @@ class _ChatScreenState extends State<ChatScreen> {
     return '$hour:$minute $period';
   }
 
-  void _highlightNewMessage(Message message) {}
+  void _highlightNewMessage(Message message) {
+    // Method intentionally left empty - no highlighting needed
+  }
 
+  // Simplify notification banner method
   void showNotificationBanner(Message message) {
     if (!mounted) return;
+
+    // Only show banner if user is not at the bottom of the chat
     bool isAtBottom = false;
     if (_scrollController.hasClients) {
       isAtBottom = _scrollController.position.pixels == _scrollController.position.maxScrollExtent;
     }
+
     if (!isAtBottom) {
       setState(() {
         _showNotificationBanner = true;
         _notificationMessage = message;
       });
+
+      // Hide notification after 3 seconds
       Future.delayed(Duration(seconds: 3), () {
         if (mounted) {
           setState(() {
@@ -1320,59 +1492,71 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  // Method to format timestamp for messages
   String _formatTimestamp(DateTime timestamp) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(Duration(days: 1));
     final messageDate = DateTime(timestamp.year, timestamp.month, timestamp.day);
+    
     if (messageDate == today) {
+      // Today, show time only
       return '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
     } else if (messageDate == yesterday) {
+      // Yesterday
       return 'Yesterday';
     } else if (now.difference(timestamp).inDays < 7) {
+      // Within a week, show day name
       final List<String> weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       return weekdays[timestamp.weekday - 1];
     } else {
+      // Older messages, show date
       return '${timestamp.day}/${timestamp.month}';
     }
   }
 
+  // Keep the original methods for getting user info by ID
   String _getParticipantName(String? senderId) {
     if (senderId == null) return widget.doctorName;
-    final user = _users.firstWhere(
-      (u) => u.id == senderId,
-      orElse: () => User(id: '', name: 'Unknown', avatar: 'assets/images/avatar.png', role: 'user'),
-    );
+    
+    final user = _users.firstWhere((u) => u.id == senderId, orElse: () => User(id: '', name: 'Unknown', avatar: 'assets/images/avatar.png', role: 'user'));
     return user.name;
   }
 
   String _getParticipantAvatar(String? senderId) {
     if (senderId == null) return widget.doctorAvatar;
-    final user = _users.firstWhere(
-      (u) => u.id == senderId,
-      orElse: () => User(id: '', name: 'Unknown', avatar: 'assets/images/avatar.png', role: 'user'),
-    );
+    
+    final user = _users.firstWhere((u) => u.id == senderId, orElse: () => User(id: '', name: 'Unknown', avatar: 'assets/images/avatar.png', role: 'user'));
     return user.avatar;
   }
-
+  
+  // Add new methods specifically for getting the other participant in the conversation
   String _getOtherParticipantName() {
+    // If we don't have a conversation yet, use the provided doctor name
     if (_conversation == null) return widget.doctorName;
+    
+    // For group conversations, use the group name
     if (_conversation!.isGroup && _conversation!.groupName != null) {
       return _conversation!.groupName!;
     }
+    
+    // For direct conversations, find the other user
     if (_conversation!.participantUsers != null && _conversation!.participantUsers!.isNotEmpty) {
+      // Find the other user (not the current user)
       final otherUser = _conversation!.participantUsers!.firstWhere(
         (user) => user.id != _currentUserId,
-        orElse: () => User(id: '', name: widget.doctorName, avatar: widget.doctorAvatar, role: 'user'),
+        orElse: () => User(id: '', name: widget.doctorName, avatar: widget.doctorAvatar, role: 'user')
       );
       return otherUser.name;
     }
+    
+    // If the conversation doesn't have participant details, try to find from users list
     if (_users.isNotEmpty && _conversation!.participants.isNotEmpty) {
       for (final participantId in _conversation!.participants) {
         if (participantId != _currentUserId) {
           final user = _users.firstWhere(
             (u) => u.id == participantId,
-            orElse: () => User(id: '', name: widget.doctorName, avatar: widget.doctorAvatar, role: 'user'),
+            orElse: () => User(id: '', name: widget.doctorName, avatar: widget.doctorAvatar, role: 'user')
           );
           if (user.id.isNotEmpty) {
             return user.name;
@@ -1380,27 +1564,37 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       }
     }
+    
+    // Default fallback
     return widget.doctorName;
   }
 
   String _getOtherParticipantAvatar() {
+    // If we don't have a conversation yet, use the provided doctor avatar
     if (_conversation == null) return widget.doctorAvatar;
+    
+    // For group conversations, use a group avatar
     if (_conversation!.isGroup) {
       return 'assets/images/group.png';
     }
+    
+    // For direct conversations, find the other user
     if (_conversation!.participantUsers != null && _conversation!.participantUsers!.isNotEmpty) {
+      // Find the other user (not the current user)
       final otherUser = _conversation!.participantUsers!.firstWhere(
         (user) => user.id != _currentUserId,
-        orElse: () => User(id: '', name: widget.doctorName, avatar: widget.doctorAvatar, role: 'user'),
+        orElse: () => User(id: '', name: widget.doctorName, avatar: widget.doctorAvatar, role: 'user')
       );
       return otherUser.avatar;
     }
+    
+    // If the conversation doesn't have participant details, try to find from users list
     if (_users.isNotEmpty && _conversation!.participants.isNotEmpty) {
       for (final participantId in _conversation!.participants) {
         if (participantId != _currentUserId) {
           final user = _users.firstWhere(
             (u) => u.id == participantId,
-            orElse: () => User(id: '', name: widget.doctorName, avatar: widget.doctorAvatar, role: 'user'),
+            orElse: () => User(id: '', name: widget.doctorName, avatar: widget.doctorAvatar, role: 'user')
           );
           if (user.id.isNotEmpty) {
             return user.avatar;
@@ -1408,11 +1602,17 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       }
     }
+    
+    // Default fallback
     return widget.doctorAvatar;
   }
 
   @override
   Widget build(BuildContext context) {
+    // Fix _socket references throughout the file by making a minor change to the build method
+    // This will force a rebuild and ensure all changes are picked up
+    
+    // Add a safety check to reset loading state if it's been too long
     if (_isLoadingChat) {
       Future.delayed(Duration(seconds: 5), () {
         if (mounted && _isLoadingChat) {
@@ -1423,6 +1623,7 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       });
     }
+    
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -1450,7 +1651,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     style: TextStyle(fontSize: 16, color: Colors.white),
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (_typingUsers.values.any((isTyping) => isTyping))
+                  if (_typingUsers.isNotEmpty)
                     Text(
                       "Typing...",
                       style: TextStyle(fontSize: 12, color: Colors.white70),
@@ -1466,12 +1667,14 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Column(
             children: [
+              // Time and notification indicator
               Container(
                 padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                 color: Colors.black,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Current time
                     Text(
                       _getCurrentTime(),
                       style: TextStyle(
@@ -1482,79 +1685,155 @@ class _ChatScreenState extends State<ChatScreen> {
                   ],
                 ),
               ),
+              
+              // Message list
               _isLoadingChat
-                  ? Expanded(
-                      child: Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                    )
-                  : Expanded(
-                      child: _messages.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey[300]),
-                                  SizedBox(height: 16),
-                                  Text(
-                                    'No messages yet',
-                                    style: TextStyle(
-                                      color: Colors.grey[500],
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Start the conversation!',
-                                    style: TextStyle(
-                                      color: Colors.grey[400],
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  SizedBox(height: 20),
-                                  SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade300),
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Connecting...',
-                                    style: TextStyle(
-                                      color: Colors.green.shade300,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : GestureDetector(
-                              onTap: () {
-                                if (_conversation != null) {
-                                  markMessagesAsRead(_conversation!.id);
-                                }
-                              },
-                              child: ListView.builder(
-                                key: ValueKey('messages-list-${_messages.length}'),
-                                padding: EdgeInsets.symmetric(horizontal: 10),
-                                controller: _scrollController,
-                                itemCount: _messages.length,
-                                // Improve the performance by using more efficient item building
-                                itemBuilder: (context, index) {
-                                  // Only log rendering in debug mode, not for every message
-                                  if (index == 0 || index == _messages.length - 1) {
-                                    print("Rendering message at index $index: ID=${_messages[index].id}");
-                                  }
-                                  final message = _messages[index];
-                                  // Use a unique key for each message to preserve state
-                                  return _buildMessageItem(message, index);
-                                },
-                              ),
-                            ),
+                ? Expanded(
+                    child: Center(
+                      child: CircularProgressIndicator(),
                     ),
+                  )
+                : Expanded(
+                    child: _messages.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey[300]),
+                              SizedBox(height: 16),
+                              Text(
+                                'No messages yet',
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontSize: 16,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Start the conversation!',
+                                style: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 14,
+                                ),
+                              ),
+                              SizedBox(height: 20),
+                              // Show subtle loading indicator for auto-refresh
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade300),
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Connecting...',
+                                style: TextStyle(
+                                  color: Colors.green.shade300,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                        : GestureDetector(
+                            // Detect when user interacts with the message list
+                            onTap: () {
+                              if (_conversation != null) {
+                                // Mark messages as read when user taps the list
+                                markMessagesAsRead(_conversation!.id);
+                              }
+                            },
+                            child: ListView.builder(
+                              padding: EdgeInsets.symmetric(horizontal: 10),
+                              controller: _scrollController,
+                              itemCount: _messages.length,
+                              itemBuilder: (context, index) {
+                                print("Rendering message at index $index: ID=${_messages[index].id}, Content=${_messages[index].content}");
+                                
+                                final message = _messages[index];
+                                final bool isCurrentUser = message.senderId == _currentUserId;
+                                final isTemporary = message.id.contains('_temp');
+                                final senderName = isCurrentUser ? "You" : (message.sender?.name ?? "Other user");
+                                final messageContent = message.content.isNotEmpty ? message.content : "(No content)";
+                                
+                                return Container(
+                                  padding: EdgeInsets.only(
+                                    left: 14, 
+                                    right: 14, 
+                                    top: 10, 
+                                    bottom: 10
+                                  ),
+                                  child: Align(
+                                    alignment: isCurrentUser ? Alignment.topRight : Alignment.topLeft,
+                                    child: InkWell(
+                                      onTap: () {
+                                        // If this is an unread message, mark all as read on tap
+                                        if (_conversation != null) {
+                                          markMessagesAsRead(_conversation!.id);
+                                        }
+                                      },
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(20),
+                                          color: isCurrentUser 
+                                              ? Colors.teal
+                                              : Color(0xFFE8F5E9),
+                                        ),
+                                        padding: EdgeInsets.all(16),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  senderName,
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: isCurrentUser ? Colors.white : Colors.black87,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                                SizedBox(width: 8),
+                                                Text(
+                                                  _formatTimestamp(message.createdAt),
+                                                  style: TextStyle(
+                                                    color: isCurrentUser ? Colors.white70 : Colors.black54,
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
+                                                if (isTemporary) ...[
+                                                  SizedBox(width: 5),
+                                                  Icon(
+                                                    Icons.access_time,
+                                                    size: 12,
+                                                    color: isCurrentUser ? Colors.white70 : Colors.black54,
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                            SizedBox(height: 5),
+                                            Text(
+                                              messageContent,
+                                              style: TextStyle(
+                                                color: isCurrentUser ? Colors.white : Colors.black87,
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                  ),
+              
+              // Typing indicator
               if (_typingUsers.values.any((isTyping) => isTyping))
                 Padding(
                   padding: EdgeInsets.only(left: 20, bottom: 8),
@@ -1569,6 +1848,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     ],
                   ),
                 ),
+              
+              // Message input
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
@@ -1577,6 +1858,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Message status indicator
                     if (_messages.isNotEmpty && _messages.last.senderId == _currentUserId)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8.0),
@@ -1585,7 +1867,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           children: [
                             Icon(
                               _messages.last.read ? Icons.done_all : Icons.done,
-                              size: 14,
+                              size: 14, 
                               color: _messages.last.read ? Colors.teal : Colors.grey,
                             ),
                             SizedBox(width: 4),
@@ -1599,6 +1881,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           ],
                         ),
                       ),
+                    // Input field and buttons
                     Row(
                       children: [
                         IconButton(
@@ -1621,6 +1904,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 hintStyle: TextStyle(color: Colors.grey),
                               ),
                               onChanged: (text) {
+                                // Notify typing status
                                 _setTyping(text.isNotEmpty);
                               },
                             ),
@@ -1649,6 +1933,8 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ],
           ),
+          
+          // Notification banner for new messages
           if (_showNotificationBanner && _notificationMessage != null)
             Positioned(
               top: 0,
@@ -1656,6 +1942,7 @@ class _ChatScreenState extends State<ChatScreen> {
               right: 0,
               child: GestureDetector(
                 onTap: () {
+                  // Scroll to the new message when banner is tapped
                   _scrollToBottom();
                   setState(() {
                     _showNotificationBanner = false;
@@ -1708,8 +1995,10 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  // Add this method to add a call button to the app bar
   List<Widget> _buildAppBarActions() {
     return [
+      // Add the call button
       IconButton(
         icon: Icon(Icons.phone, color: Colors.white),
         onPressed: () {
@@ -1720,297 +2009,104 @@ class _ChatScreenState extends State<ChatScreen> {
     ];
   }
 
+  // Add this method to initiate an audio call
   void _initiateAudioCall() {
     print('[CALL] Initiating audio call...');
-    // Check if we have a socket connection
-    if (socket == null) {
-      print('[CALL] Socket is null, trying to reconnect first');
-      _connectToSocketAndInitiateCall();
+    
+    if (socket == null || !socket!.connected) {
+      print('[CALL] Socket not connected, cannot initiate call');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Cannot start call: not connected to server'))
+      );
       return;
     }
     
-    if (!socket!.connected) {
-      print('[CALL] Socket not connected, trying to reconnect first');
-      _connectToSocketAndInitiateCall();
-      return;
-    }
-    
-    // Rest of the original method remains the same
     if (_currentUserId == null || _conversation == null) {
       print('[CALL] Missing user ID or conversation, trying to get receiver ID from conversation data');
+      
+      // Try to get receiver ID from conversation participants
       String? receiverId;
       if (_conversation != null) {
         for (final participant in _conversation!.participants) {
+          // Handle participant that can be string or object
           String participantId = '';
           if (participant is String) {
             participantId = participant;
           } else if (participant is Map<String, dynamic> && participant.containsKey('_id')) {
             participantId = participant['_id'] as String;
           }
+          
           if (participantId.isNotEmpty && participantId != _currentUserId) {
             receiverId = participantId;
             break;
           }
         }
       }
+      
       if (receiverId == null) {
         print('[CALL] Could not determine receiver ID');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Cannot start call: missing receiver information')),
+          SnackBar(content: Text('Cannot start call: missing receiver information'))
         );
         return;
       }
+      
       _emitCallInitiation(receiverId);
     } else {
+      // Find the receiver ID (the other participant in the conversation)
       String? receiverId;
       for (final participant in _conversation!.participants) {
+        // Handle participant that can be string or object
         String participantId = '';
         if (participant is String) {
           participantId = participant;
         } else if (participant is Map<String, dynamic> && participant.containsKey('_id')) {
           participantId = participant['_id'] as String;
         }
+        
         if (participantId.isNotEmpty && participantId != _currentUserId) {
           receiverId = participantId;
           break;
         }
       }
+      
       if (receiverId == null) {
         print('[CALL] Could not determine receiver ID');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Cannot start call: missing receiver information')),
+          SnackBar(content: Text('Cannot start call: missing receiver information'))
         );
         return;
       }
+      
       _emitCallInitiation(receiverId);
     }
   }
 
-  // Add a new method to handle connection and call initiation
-  void _connectToSocketAndInitiateCall() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Connecting to server. Please try again in a moment.')),
-    );
-    
-    // Create a socket service instance
-    final socketService = SocketService();
-    
-    try {
-      // Try to initialize the socket
-      await socketService.initializeSocket();
-      
-      // Try to reconnect the existing socket if it exists
-      if (socket != null) {
-        socket!.connect();
-        print('[CALL] Attempting to reconnect existing socket');
-      } else {
-        // Get socket from service
-        socket = socketService.socket;
-        print('[CALL] Obtained new socket from service');
-      }
-      
-      // Also initialize the call socket
-      _connectCallSocket();
-      
-      // Wait a moment to ensure connection completes
-      await Future.delayed(Duration(seconds: 2));
-      
-      // Check if connection was successful
-      if (socket != null && socket!.connected) {
-        print('[CALL] Socket connection successful, call can be initiated now');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Connected. You can now place a call.')),
-        );
-      } else {
-        print('[CALL] Socket still not connected after reconnection attempt');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Still unable to connect. Please check your internet connection.')),
-        );
-      }
-    } catch (e) {
-      print('[CALL] Error during socket reconnection: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Connection failed. Please try again later.')),
-      );
-    }
-  }
-  
-  // Update the _connectCallSocket method to properly handle connection initialization
-  void _connectCallSocket() async {
-    try {
-      print("[CALL] Starting call socket connection...");
-      
-      // Get the user ID if it's not already available
-      if (_currentUserId == null) {
-        await _getCurrentUserId();
-        if (_currentUserId == null) {
-          print("[CALL] Cannot connect call socket: user ID not available");
-          return;
-        }
-      }
-      
-      // Get the auth token if it's not already available
-      if (_authToken == null) {
-        _authToken = await storage.read(key: 'auth_token');
-        if (_authToken == null) {
-          print("[CALL] Cannot connect call socket: auth token not available");
-          return;
-        }
-      }
-      
-      final socketManager = SocketManager();
-      final String baseUrl = ApiConfig.baseUrl;
-      
-      // Verify we have the required information
-      if (_currentUserId!.isEmpty || _authToken!.isEmpty) {
-        print("[CALL] Missing user ID or auth token for call socket");
-        return;
-      }
-      
-      print("[CALL] Initializing call socket with userId: $_currentUserId");
-      
-      // Check if already connected using connectionStatus
-      if (socketManager.connectionStatus != ConnectionStatus.connected) {
-        print("[CALL] Socket manager not connected, initializing...");
-        bool initSuccess = await socketManager.initialize(
-          token: _authToken ?? '',
-          baseUrl: baseUrl,
-          userId: _currentUserId ?? '',
-        );
-        
-        if (!initSuccess) {
-          print("[CALL] Failed to initialize socket manager");
-          return;
-        }
-      }
-      
-      // Get socket instance from manager
-      callSocket = socketManager.socket;
-      
-      if (callSocket == null) {
-        print("[SOCKET ERROR] Failed to get socket instance from manager");
-        _showErrorSnackbar("Connection issue. Please restart the app.");
-        return;
-      }
-      
-      print("[SOCKET] Call socket initialized, setting up call listeners");
-      
-      // Setup call listeners
-      _setupDedicatedCallListeners();
-      
-      // Check connection status and log
-      if (callSocket!.connected) {
-        print("[SOCKET] Call socket connected immediately");
-        // Join user's call room
-        _joinCallUserRoom(_currentUserId!);
-      } else {
-        print("[SOCKET] Call socket not connected, waiting for connection events");
-        
-        // Add a connection listener to join room once connected
-        callSocket!.onConnect((_) {
-          print("[SOCKET] Call socket connected");
-          _joinCallUserRoom(_currentUserId!);
-        });
-        
-        // Force connection if not already connecting
-        if (!callSocket!.connected) {
-          print("[SOCKET] Explicitly connecting call socket");
-          callSocket!.connect();
-        }
-      }
-    } catch (e) {
-      print("[SOCKET ERROR] Error connecting to call socket: $e");
-      _showErrorSnackbar("Connection issue. Please try again.");
-    }
-  }
-
   void _emitCallInitiation(String receiverId) {
-    // If socket is null, try to reconnect first
-    if (socket == null) {
-      print('[CALL] Socket is null, trying to reconnect first');
-      _connectToSocketAndInitiateCall();
-      return;
-    }
-    
-    if (!socket!.connected) {
-      print('[CALL] Socket not connected, attempting to connect');
-      
-      // Show a waiting dialog
-      showDialog(
-        context: context, 
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: Text('Connecting...'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 20),
-              Text('Establishing connection to server...'),
-            ],
-          ),
-        )
-      );
-      
-      // Define a timeout to prevent indefinite waiting
-      Timer connectionTimeout = Timer(Duration(seconds: 10), () {
-        if (mounted) {
-          Navigator.of(context).pop(); // Close the waiting dialog
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Connection timed out. Please try again.'))
-          );
-        }
-      });
-      
-      // Set up a one-time connection listener
-      socket!.once('connect', (_) {
-        connectionTimeout.cancel();
-        
-        // Close the waiting dialog if it's still showing
-        if (mounted && Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        }
-        
-        // Now proceed with the call initiation
-        _proceedWithCallInitiation(receiverId);
-      });
-      
-      // Try to connect
-      socket!.connect();
-    } else {
-      // Socket is already connected, proceed directly
-      _proceedWithCallInitiation(receiverId);
-    }
-  }
-  
-  // Helper method to proceed with call initiation once socket is connected
-  void _proceedWithCallInitiation(String receiverId) {
-    print('[CALL] Socket connected, proceeding with call initiation');
     print('[CALL] Emitting initiate_call event to receiver: $receiverId');
     print('[CALL] Conversation ID: ${_conversation?.id}');
     
+    // Register for call-related events if not already done
     _setupCallEventListeners();
+    
+    // Get the sender name and avatar to pass with the call
     String senderName = "User";
     String senderAvatar = "assets/images/avatar.png";
     
+    // Try to get sender info from storage
     _getSenderInfo().then((info) {
       if (info != null) {
         senderName = info['name'] ?? senderName;
         senderAvatar = info['avatar'] ?? senderAvatar;
       }
       
+      // Show calling dialog/screen to provide immediate feedback
       _showCallingDialog(receiverId);
       
-      // Create a unique call ID
+      // Generate a unique call ID that includes both users
       final callId = 'call_${_currentUserId}_${receiverId}_${DateTime.now().millisecondsSinceEpoch}';
       
-      // Save pending call info
-      pendingCallId = callId;
-      pendingCallReceiverId = receiverId;
-      pendingCallType = 'audio';
-      pendingCallReceiverName = "User";
-      
-      // Create call data
+      // Send complete call information
       final callData = {
         'callerId': _currentUserId,
         'callerName': senderName,
@@ -2018,75 +2114,40 @@ class _ChatScreenState extends State<ChatScreen> {
         'receiverId': receiverId,
         'conversationId': _conversation?.id ?? '',
         'timestamp': DateTime.now().toIso8601String(),
-        'callId': callId,
-        'callType': 'audio',
+        'callId': callId
       };
       
-      // Store current call data
-      currentCallData = callData;
+      // Emit multiple variants of the call event for compatibility
+      // with different server implementations
       
-      // Add a timeout for the call
-      _callTimeoutTimer = Timer(Duration(seconds: 30), () {
-        if (mounted) {
-          print('[CALL] Call timed out after 30 seconds');
-          Navigator.of(context).pop(); // Close calling dialog
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Call timed out. User may be unavailable.'))
-          );
-          _resetPendingCallData();
-        }
-      });
-      
-      // Emit call events with multiple retries for reliability
-      _emitCallEventsWithRetry(callData, receiverId);
-    });
-  }
-  
-  // Helper method to emit call events with retry logic
-  void _emitCallEventsWithRetry(Map<String, dynamic> callData, String receiverId, {int retryCount = 0}) {
-    if (retryCount >= 3) {
-      print('[CALL] Max retries reached for call emit, giving up');
-      return;
-    }
-    
-    try {
-      if (socket == null || !socket!.connected) {
-        print('[CALL] Socket disconnected during call initiation, retrying...');
-        Future.delayed(Duration(seconds: 1), () {
-          _emitCallEventsWithRetry(callData, receiverId, retryCount: retryCount + 1);
-        });
-        return;
-      }
-      
-      // Emit multiple event types for better compatibility
+      // Specific targeted call to the receiver's room
       socket!.emit('direct_call', {
         'targetRoom': receiverId,
-        'data': callData,
+        'data': callData
       });
       
+      // Standard initiate_call event
       socket!.emit('initiate_call', callData);
+      
+      // Generic call_user event used by many socket implementations
       socket!.emit('call_user', callData);
       
-      // Debug event
+      // Debug event that broadcasts to everyone - useful for testing
       socket!.emit('debug_call', {
         'message': 'Call initiated from $_currentUserId to $receiverId',
-        'callData': callData,
+        'callData': callData
       });
       
       print('[CALL] Sent call initiation with data: $callData');
       
-      // Use acknowledgment to confirm server received the call
+      // Request server to acknowledge the call initiation
       socket!.emitWithAck('verify_call_sent', callData, ack: (data) {
         print('[CALL] Server acknowledged call initiation: $data');
       });
-    } catch (e) {
-      print('[CALL] Error during call initiation: $e, retrying...');
-      Future.delayed(Duration(seconds: 1), () {
-        _emitCallEventsWithRetry(callData, receiverId, retryCount: retryCount + 1);
-      });
-    }
+    });
   }
 
+  // Helper method to get sender info
   Future<Map<String, String>?> _getSenderInfo() async {
     try {
       final userJson = await storage.read(key: 'user');
@@ -2094,7 +2155,7 @@ class _ChatScreenState extends State<ChatScreen> {
         final userData = json.decode(userJson);
         return {
           'name': userData['name'] ?? 'User',
-          'avatar': userData['avatar'] ?? 'assets/images/avatar.png',
+          'avatar': userData['avatar'] ?? 'assets/images/avatar.png'
         };
       }
       return null;
@@ -2105,7 +2166,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _setupCallEventListeners() {
-    if (socket == null) return;
+    // Remove existing event listeners to avoid duplicates
     socket!.off('call_accepted');
     socket!.off('call_rejected');
     socket!.off('call_ended');
@@ -2113,57 +2174,94 @@ class _ChatScreenState extends State<ChatScreen> {
     socket!.off('direct_call');
     socket!.off('call_user');
     socket!.off('new_call');
+    
     print('[CALL] Setting up call event listeners');
+    
+    // Listen for call accepted event
     socket!.on('call_accepted', (data) {
       print('[CALL] Call accepted: $data');
+      
+      // Hide calling dialog if shown
       Navigator.of(context).popUntil((route) => route.isFirst);
+      
+      // Show connected call UI with caller info from data
       String callerName = data['callerName'] ?? widget.doctorName;
       String callerAvatar = data['callerAvatar'] ?? widget.doctorAvatar;
       _showCallInProgressDialog(data['callId'], callerName, callerAvatar);
     });
+    
+    // Listen for call rejected event
     socket!.on('call_rejected', (data) {
       print('[CALL] Call rejected: $data');
+      
+      // Hide calling dialog if shown
       Navigator.of(context).popUntil((route) => route.isFirst);
+      
+      // Show rejection message
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Call was rejected')),
+        SnackBar(content: Text('Call was rejected'))
       );
     });
+    
+    // Listen for call ended event
     socket!.on('call_ended', (data) {
-      print("[CALL] Call ended event received: $data");
-      _handleCallEnded(data);
+      print('[CALL] Call ended: $data');
+      
+      // Hide any call dialogs
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      
+      // Show call ended message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Call ended'))
+      );
     });
+    
+    // Listen for the standard incoming call event
     socket!.on('incoming_call', (data) {
       print('[CALL] Incoming call standard event: $data');
       _handleIncomingCall(data);
     });
+    
+    // Listen for direct calls (sent to user room)
     socket!.on('direct_call', (data) {
       print('[CALL] Direct call event received: $data');
+      // Handle both formats - some implementations wrap in data field
       final callData = data is Map && data.containsKey('data') ? data['data'] : data;
       _handleIncomingCall(callData);
     });
+    
+    // Listen for generic call_user events
     socket!.on('call_user', (data) {
       print('[CALL] Call user event received: $data');
       _handleIncomingCall(data);
     });
+    
+    // Listen for new_call events (another common format)
     socket!.on('new_call', (data) {
       print('[CALL] New call event received: $data');
       _handleIncomingCall(data);
     });
+    
     print('[CALL] Call event listeners setup complete');
   }
 
+  // Handle incoming call event
   void _handleIncomingCall(Map<String, dynamic> data) {
     if (!mounted) return;
+    
     final callerId = data['callerId'];
     final callerName = data['callerName'] ?? 'Unknown Caller';
     final callId = data['callId'];
     final callType = data['callType'] ?? 'audio';
+    
     print("[SOCKET] Incoming call from $callerName (ID: $callerId), callId: $callId, type: $callType");
+    
+    // Show incoming call UI
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: Text("Incoming ${callType.toString().toUpperCase()} Call"),
+        title: Text("Incoming ${callType.toString().capitalize()} Call"),
         content: Text("$callerName is calling you"),
         actions: [
           TextButton(
@@ -2206,14 +2304,16 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: [
           TextButton(
             onPressed: () {
+              // Cancel the call
               Navigator.pop(context);
-              if (socket != null) {
-                socket!.emit('end_call', {
-                  'receiverId': receiverId,
-                });
-              }
+              
+              // Emit call ended event
+              socket!.emit('end_call', {
+                'receiverId': receiverId,
+              });
+              
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Call cancelled')),
+                SnackBar(content: Text('Call cancelled'))
               );
             },
             child: Text('Cancel'),
@@ -2224,12 +2324,19 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _showIncomingCallDialog(dynamic data) {
+    // Extract caller information from the data
     final callerId = data['callerId'];
     final callerName = data['callerName'] ?? 'Unknown Caller';
     final callerAvatar = data['callerAvatar'] ?? 'assets/images/avatar.png';
     final callId = data['callId'] ?? 'unknown_call';
+    
+    // For debugging
     print('[CALL] Showing incoming call from: $callerName (ID: $callerId)');
+    
+    // Play ringtone or additional haptic feedback
     HapticFeedback.heavyImpact();
+    
+    // Show dialog with fullscreen option for better visibility
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -2263,13 +2370,13 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              if (socket != null) {
-                socket!.emit('reject_call', {
-                  'callId': callId,
-                  'receiverId': callerId,
-                  'userId': _currentUserId,
-                });
-              }
+              // Reject the call
+              socket!.emit('reject_call', {
+                'callId': callId,
+                'receiverId': callerId,
+                'userId': _currentUserId,
+              });
+              
               Navigator.pop(context);
             },
             child: Text('Reject'),
@@ -2280,14 +2387,16 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           TextButton(
             onPressed: () {
-              if (socket != null) {
-                socket!.emit('accept_call', {
-                  'callId': callId,
-                  'receiverId': callerId,
-                  'userId': _currentUserId,
-                });
-              }
+              // Accept the call
+              socket!.emit('accept_call', {
+                'callId': callId,
+                'receiverId': callerId,
+                'userId': _currentUserId,
+              });
+              
               Navigator.pop(context);
+              
+              // Show call in progress UI
               _showCallInProgressDialog(callId, callerName, callerAvatar);
             },
             child: Text('Accept'),
@@ -2301,9 +2410,11 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  // Updated to include caller information
   void _showCallInProgressDialog(String callId, [String? callerName, String? callerAvatar]) {
     final displayName = callerName ?? widget.doctorName;
     final displayAvatar = callerAvatar ?? widget.doctorAvatar;
+    
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -2324,11 +2435,11 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              if (socket != null) {
-                socket!.emit('end_call', {
-                  'callId': callId,
-                });
-              }
+              // End the call
+              socket!.emit('end_call', {
+                'callId': callId,
+              });
+              
               Navigator.pop(context);
             },
             child: Text('End Call'),
@@ -2342,24 +2453,35 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  // Diagnostic method to check connection and configuration
   Future<void> _diagnoseConnection() async {
     print("\n=== CONNECTION DIAGNOSTICS ===");
+    
+    // Check API configuration
     print("API Base URL: ${ApiConfig.baseUrl}");
     print("API Socket URL: ${ApiConfig.socketUrl}");
+    
+    // Check authentication
     final token = await storage.read(key: 'auth_token');
     final userId = await storage.read(key: 'user_id');
     print("Auth token available: ${token != null && token.isNotEmpty}");
     print("User ID available: ${userId != null && userId.isNotEmpty}");
+    
+    // Check socket service status
     final socketService = SocketService();
     print("Socket service initialized: ${socketService.isInitialized}");
     print("Socket connection status: ${socketService.currentConnectionStatus}");
     print("Socket is connected: ${socketService.isConnected}");
+    
+    // Try to get diagnostics
     try {
       final diagnostics = socketService.getDiagnosticInfo();
       print("Socket diagnostics: $diagnostics");
     } catch (e) {
       print("Error getting socket diagnostics: $e");
     }
+    
+    // Check server connectivity with a simple test request
     try {
       if (token != null && token.isNotEmpty) {
         final response = await http.get(
@@ -2369,6 +2491,7 @@ class _ChatScreenState extends State<ChatScreen> {
             'Authorization': 'Bearer $token',
           },
         ).timeout(Duration(seconds: 5));
+        
         print("API health check response: ${response.statusCode}");
       } else {
         print("Cannot check API health: No auth token available");
@@ -2376,51 +2499,67 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       print("API health check failed: $e");
     }
+    
     print("=== END CONNECTION DIAGNOSTICS ===\n");
   }
 
+  // Setup automatic refresh when messages are empty
   void _setupAutoRefresh() {
+    // Cancel any existing timer
     _autoRefreshTimer?.cancel();
+    
+    // Create new refresh timer that checks if messages are empty
     _autoRefreshTimer = Timer.periodic(Duration(seconds: 5), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
       }
       
+      // Only auto-refresh if we have no messages and we're not currently loading
       if (_messages.isEmpty && !_isLoadingChat) {
-        // If we don't have any messages yet, use the regular refresh with loading indicator
         _autoRefreshAttempts++;
         print("[AUTO-REFRESH] Attempt $_autoRefreshAttempts to load messages");
-        if (_autoRefreshAttempts <= 12) {
+        
+        // Try to reconnect and fetch messages
+        if (_autoRefreshAttempts <= 12) { // Limit to 1 minute of attempts (12 * 5 seconds)
           _attemptRefresh();
         } else {
-          if (_autoRefreshAttempts % 6 == 0) {
+          // After 1 minute of attempts, slow down to every 30 seconds
+          if (_autoRefreshAttempts % 6 == 0) { // Every 30 seconds (6 * 5 seconds)
             _attemptRefresh();
           }
         }
-      } else {
-        // If we already have messages, use the silent refresh to avoid UI flicker
-        _silentMessageRefresh();
+      } else if (!_messages.isEmpty) {
+        // If we have messages, we can stop the auto-refresh timer
+        print("[AUTO-REFRESH] Messages loaded, stopping auto-refresh");
+        timer.cancel();
+        _autoRefreshTimer = null;
       }
     });
   }
-
+  
+  // Attempt to refresh the messages
   Future<void> _attemptRefresh() async {
-    print("[AUTO-REFRESH] Attempting to refresh messages silently");
+    print("[AUTO-REFRESH] Attempting to refresh messages");
+    
+    // Check if socket is connected, try to reconnect if not
     final socketService = SocketService();
     if (!socketService.isConnected) {
       print("[AUTO-REFRESH] Socket not connected, attempting to reconnect");
       await socketService.reconnect();
     }
+    
+    // Fetch messages if we have a conversation ID
     if (widget.conversationId != null && widget.conversationId!.isNotEmpty) {
-      await fetchMessages(widget.conversationId, true); // Use silent refresh
+      await fetchMessages(widget.conversationId);
     } else if (_conversation != null && _conversation!.id.isNotEmpty) {
-      await fetchMessages(_conversation!.id, true); // Use silent refresh
+      await fetchMessages(_conversation!.id);
     } else {
       print("[AUTO-REFRESH] No conversation ID available for fetching messages");
     }
   }
 
+  // Add this method to mark messages as read
   void _markMessagesAsRead() {
     try {
       if (socket != null && socket!.connected) {
@@ -2431,17 +2570,20 @@ class _ChatScreenState extends State<ChatScreen> {
         });
       } else {
         print("[CHAT] Socket not connected, cannot mark messages as read");
+        // Try using HTTP instead
         _markMessagesAsReadViaHttp();
       }
     } catch (e) {
       print("[CHAT] Error marking messages as read: $e");
     }
   }
-
+  
+  // Fallback HTTP method to mark messages as read
   Future<void> _markMessagesAsReadViaHttp() async {
     try {
       final token = await storage.read(key: 'auth_token');
       if (token == null) return;
+      
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/messages/mark-read'),
         headers: {
@@ -2453,6 +2595,7 @@ class _ChatScreenState extends State<ChatScreen> {
           'userId': _currentUserId,
         }),
       );
+      
       if (response.statusCode == 200) {
         print("[CHAT] Successfully marked messages as read via HTTP");
       } else {
@@ -2463,72 +2606,66 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  // Add this method to join chat room
   void _joinChatRoom() async {
+    // Wait for user ID to be available
     if (_currentUserId == null) {
       await _getCurrentUserId();
     }
+    
     if (_currentUserId == null || socket == null) {
       print("[CHAT] Cannot join chat room: user ID or socket not available");
       return;
     }
+    
+    // If we have a conversation ID, join that room
     if (widget.conversationId != null && widget.conversationId!.isNotEmpty) {
       print("[CHAT] Joining conversation room: ${widget.conversationId}");
       socket!.emit('join_conversation', {
         'conversationId': widget.conversationId,
-        'userId': _currentUserId,
+        'userId': _currentUserId
       });
+      
+      // Start message polling for this conversation
       _startSocketPolling();
     }
   }
 
+  // Initialize dedicated call socket
   Future<void> _initializeCallSocket() async {
-    // Get the user ID if it's not already available
-    if (_currentUserId == null) {
-      await _getCurrentUserId();
-    }
-    
-    // Get the auth token if it's not already available
-    if (_authToken == null) {
-      _authToken = await storage.read(key: 'auth_token');
-    }
-    
-    if (_currentUserId == null || _authToken == null) {
-      print("[CALL ERROR] Cannot initialize call socket: userId or token is null");
-      return;
-    }
-
-    if (_currentUserId!.isEmpty || _authToken!.isEmpty) {
-      print("[CALL ERROR] Empty userId or token, cannot initialize call socket");
-      return;
-    }
-
-    print("[CALL] Initializing dedicated call socket with userId: $_currentUserId");
-    
     try {
-      // Use SocketIO with improved configuration
+      print("[CALL] Initializing dedicated call socket");
+      
+      // Get the auth token
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      final userId = prefs.getString('user_id');
+      
+      if (token == null || userId == null) {
+        print("[CALL ERROR] Cannot initialize call socket: missing token or userId");
+        return;
+      }
+      
+      print("[CALL] Creating socket with userId: $userId");
+      
+      // Create a dedicated socket just for calls
       callSocket = io.io(
-        ApiConfig.baseUrl, 
+        Constants.API_URL, 
         io.OptionBuilder()
-          .setTransports(['websocket', 'polling']) // Support both transports for reliability
-          .enableAutoConnect() // Automatically connect
-          .setExtraHeaders({'Authorization': 'Bearer $_authToken'})
-          .setQuery({'userId': _currentUserId})
-          .enableForceNew() // Create a new connection
-          .enableReconnection() // Enable automatic reconnection
-          .setReconnectionDelay(1000) // 1 second initial reconnection delay
-          .setReconnectionDelayMax(10000) // 10 seconds maximum reconnection delay
-          .setReconnectionAttempts(10) // Try to reconnect 10 times
+          .setTransports(['websocket'])
+          .disableAutoConnect()
+          .setExtraHeaders({'Authorization': 'Bearer $token'})
+          .setQuery({'userId': userId})
+          .enableForceNew()
           .build()
       );
       
-      print("[CALL] Call socket initialized with options, setting up event handlers");
-      
       // Set up connection event handlers with detailed logging
       callSocket!.onConnect((_) {
-        print("[CALL] Call socket connected successfully with id: ${callSocket!.id}");
+        print("[CALL] Call socket connected with id: ${callSocket!.id}");
         
         // Join user's room for call notifications
-        _joinCallUserRoom(_currentUserId!);
+        _joinCallUserRoom(userId);
         
         // Set up call event listeners
         _setupDedicatedCallListeners();
@@ -2556,35 +2693,16 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       });
       
-      callSocket!.onReconnect((attempt) {
-        print("[CALL] Socket reconnecting, attempt #$attempt");
-      });
+      // Connect the socket
+      print("[CALL] Connecting call socket");
+      callSocket!.connect();
       
-      callSocket!.onReconnectAttempt((attempt) {
-        print("[CALL] Socket reconnect attempt #$attempt");
-      });
-      
-      callSocket!.onReconnectFailed((_) {
-        print("[CALL] Socket reconnection failed after all attempts");
-      });
-      
-      callSocket!.onReconnectError((error) {
-        print("[CALL] Socket reconnection error: $error");
-      });
-      
-      // The socket should connect automatically since we used enableAutoConnect()
-      // But we'll explicitly connect to be sure
-      if (!callSocket!.connected) {
-        print("[CALL] Explicitly connecting call socket");
-        callSocket!.connect();
-      }
-      
-      // Set a timeout to check if connection was successful and retry if needed
+      // Set a timeout to check if connection was successful
       Future.delayed(Duration(seconds: 5), () {
         if (mounted && callSocket != null && !callSocket!.connected) {
-          print("[CALL WARNING] Call socket failed to connect within timeout, retrying...");
-          callSocket!.disconnect(); // Disconnect first to clear any pending state
-          callSocket!.connect(); // Try connecting again
+          print("[CALL WARNING] Call socket failed to connect within timeout");
+          // Try reconnecting
+          callSocket!.connect();
         }
       });
       
@@ -2605,64 +2723,143 @@ class _ChatScreenState extends State<ChatScreen> {
   // Setup all call-related socket listeners
   void _setupDedicatedCallListeners() {
     if (callSocket == null) {
-      print("[CALL] Cannot setup listeners - socket is null");
+      print("[SOCKET ERROR] Cannot setup call listeners - socket is null");
       return;
     }
+  
+    print("[SOCKET] Setting up call listeners...");
     
-    // Remove any existing listeners to prevent duplicates
-    callSocket!.off('incoming_call');
-    callSocket!.off('call_accepted');
-    callSocket!.off('call_rejected');
-    callSocket!.off('call_ended');
-    callSocket!.off('ice_candidate');
-    callSocket!.off('offer');
-    callSocket!.off('answer');
-    
-    print("[CALL] Setting up dedicated call listeners");
-    
-    // Handle incoming calls
-    callSocket!.on('incoming_call', (data) {
-      print("[CALL] Incoming call event received: $data");
-      _handleCallSocketIncomingCall(data);
-    });
-    
-    // Handle when the other user accepts our call
-    callSocket!.on('call_accepted', (data) {
-      print("[CALL] Call accepted event received: $data");
-      _handleCallAccepted(data);
-    });
-    
-    // Handle when the other user rejects our call
-    callSocket!.on('call_rejected', (data) {
-      print("[CALL] Call rejected event received: $data");
-      if (_callTimeoutTimer != null) {
-        _callTimeoutTimer!.cancel();
-        _callTimeoutTimer = null;
+    // Listen for incoming calls
+    callSocket!.on('incomingCall', (data) {
+      print("[SOCKET] Received incoming call: $data");
+      if (data != null) {
+        _handleDedicatedCallIncomingCall(data);
+      } else {
+        print("[SOCKET ERROR] Received null incoming call data");
       }
-      
-      if (mounted) {
-        // Close any open dialog
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
+    });
+    
+    // Listen for call accepted
+    callSocket!.on('callAccepted', (data) {
+      print("[SOCKET] Call accepted: $data");
+      if (data != null) {
+        _handleCallAccepted(data);
+      }
+    });
+    
+    // Listen for call rejected
+    callSocket!.on('callRejected', (data) {
+      print("[SOCKET] Call rejected: $data");
+      if (data != null && mounted) {
+        if (_callTimeoutTimer != null) {
+          _callTimeoutTimer!.cancel();
+          _callTimeoutTimer = null;
         }
+        Navigator.of(context).pop(); // Close any calling dialog
         
-        _showErrorSnackbar("Call was rejected");
+        final reason = data['reason'] ?? 'Call was rejected';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(reason), duration: Duration(seconds: 2))
+        );
+        
+        _resetPendingCallData();
       }
-      
-      _resetPendingCallData();
     });
     
-    // Handle when a call is ended
-    callSocket!.on('call_ended', (data) {
-      print("[CALL] Call ended event received: $data");
-      _handleCallEnded(data);
+    // Listen for call ended
+    callSocket!.on('callEnded', (data) {
+      print("[SOCKET] Call ended: $data");
+      if (data != null) {
+        _handleCallEnded(data);
+      }
     });
     
-    print("[CALL] Call listeners setup complete");
+    // Listen for call timeout
+    callSocket!.on('callTimeout', (data) {
+      print("[SOCKET] Call timed out: $data");
+      if (data != null && mounted) {
+        if (_callTimeoutTimer != null) {
+          _callTimeoutTimer!.cancel();
+          _callTimeoutTimer = null;
+        }
+        Navigator.of(context).pop(); // Close any calling dialog
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Call timed out. User may be unavailable."), duration: Duration(seconds: 2))
+        );
+        
+        _resetPendingCallData();
+      }
+    });
+    
+    // Listen for ICE candidate
+    callSocket!.on('iceCandidate', (data) {
+      print("[SOCKET] Received ICE candidate: ${data != null ? 'valid data' : 'null data'}");
+      if (data != null) {
+        // Handle ICE candidate
+      }
+    });
+    
+    // Listen for SDP offer
+    callSocket!.on('sdpOffer', (data) {
+      print("[SOCKET] Received SDP offer: ${data != null ? 'valid data' : 'null data'}");
+      if (data != null) {
+        // Handle SDP offer
+      }
+    });
+    
+    // Listen for SDP answer
+    callSocket!.on('sdpAnswer', (data) {
+      print("[SOCKET] Received SDP answer: ${data != null ? 'valid data' : 'null data'}");
+      if (data != null) {
+        // Handle SDP answer
+      }
+    });
+    
+    print("[SOCKET] Call listeners setup complete");
   }
   
-
   // Handle incoming call event
+  void _handleIncomingCall(Map<String, dynamic> data) {
+    if (!mounted) return;
+    
+    final callerId = data['callerId'];
+    final callerName = data['callerName'] ?? 'Unknown Caller';
+    final callId = data['callId'];
+    final callType = data['callType'] ?? 'audio';
+    
+    print("[SOCKET] Incoming call from $callerName (ID: $callerId), callId: $callId, type: $callType");
+    
+    // Show incoming call UI
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text("Incoming ${callType.toString().capitalize()} Call"),
+        content: Text("$callerName is calling you"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _rejectCall(callId, callerId);
+            },
+            child: Text("Decline", style: TextStyle(color: Colors.red)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _acceptCall(callId, callerId, callType);
+            },
+            child: Text("Accept"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   
   // Accept incoming call
   void _acceptCall(String callId, String callerId, String callType) {
@@ -2677,11 +2874,13 @@ class _ChatScreenState extends State<ChatScreen> {
     final data = {
       'callId': callId,
       'callerId': callerId,
-      'receiverId': _currentUserId,
+      'receiverId': widget.userId,
     };
     
     print("[SOCKET] Emitting acceptCall with data: $data");
-    callSocket!.emit('acceptCall', data);
+    callSocket!.emit('acceptCall', data, (ack) {
+      print("[SOCKET] Call acceptance acknowledgment: $ack");
+    });
     
     // Navigate to call screen
     if (callType.toLowerCase() == 'video') {
@@ -2703,7 +2902,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final data = {
       'callId': callId,
       'callerId': callerId,
-      'receiverId': _currentUserId,
+      'receiverId': widget.userId,
       'reason': 'Call rejected by user'
     };
     
@@ -2729,24 +2928,10 @@ class _ChatScreenState extends State<ChatScreen> {
     Navigator.of(context).pop();
     
     // Navigate to appropriate call screen based on previously saved call type
-    if (pendingCallType.toLowerCase() == 'video') {
+    if (_pendingCallType.toLowerCase() == 'video') {
       _navigateToVideoCallScreen(receiverId, callId);
     } else {
       _navigateToAudioCallScreen(receiverId, callId);
-    }
-  }
-  
-  // Reset pending call data
-  void _resetPendingCallData() {
-    print("[CALL] Resetting pending call data");
-    if (mounted) {
-      setState(() {
-        pendingCallId = '';
-        pendingCallReceiverId = '';
-        pendingCallReceiverName = '';
-        pendingCallType = '';
-        currentCallData = {};
-      });
     }
   }
   
@@ -2762,11 +2947,11 @@ class _ChatScreenState extends State<ChatScreen> {
     print("[NAVIGATION] Navigating to audio call screen with peer: $peerId, callId: $callId");
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => ChatAudioCallScreen(
+        builder: (context) => AudioCallScreen(
           callId: callId,
           peerId: peerId,
           socket: callSocket!,
-          userId: _currentUserId!,
+          userId: widget.userId,
         ),
       ),
     );
@@ -2777,17 +2962,73 @@ class _ChatScreenState extends State<ChatScreen> {
     print("[NAVIGATION] Navigating to video call screen with peer: $peerId, callId: $callId");
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => ChatVideoCallScreen(
+        builder: (context) => VideoCallScreen(
           callId: callId,
           peerId: peerId,
           socket: callSocket!,
-          userId: _currentUserId!,
+          userId: widget.userId,
         ),
       ),
     );
   }
 
   // Method to connect to the call socket with detailed logging and error handling
+  void _connectCallSocket() {
+    print("[SOCKET] Connecting to call socket...");
+    
+    try {
+      // Check if we already have a socket instance
+      if (callSocket != null) {
+        if (callSocket!.connected) {
+          print("[SOCKET] Call socket already connected");
+          return;
+        } else {
+          print("[SOCKET] Call socket exists but disconnected, reconnecting...");
+          callSocket!.connect();
+          return;
+        }
+      }
+      
+      // Get socket manager instance
+      final socketManager = SocketManager();
+      
+      // Initialize socket if not already initialized
+      if (!socketManager.isInitialized()) {
+        print("[SOCKET] Socket manager not initialized, initializing...");
+        socketManager.initialize(
+          baseUrl: baseUrl,
+          token: userToken,
+          userId: widget.userId,
+        );
+      }
+      
+      // Get socket instance from manager
+      callSocket = socketManager.socket;
+      
+      if (callSocket == null) {
+        print("[SOCKET ERROR] Failed to get socket instance from manager");
+        _showErrorSnackbar("Connection issue. Please restart the app.");
+        return;
+      }
+      
+      print("[SOCKET] Call socket initialized, setting up call listeners");
+      
+      // Setup call listeners
+      _setupDedicatedCallListeners();
+      
+      // Check connection status and log
+      if (callSocket!.connected) {
+        print("[SOCKET] Call socket connected immediately");
+        // No need to handle this further, will be handled by the socket events
+      } else {
+        print("[SOCKET] Call socket not connected, waiting for connection events");
+        // Connection will be handled by the event listeners
+      }
+    } catch (e) {
+      print("[SOCKET ERROR] Error connecting to call socket: $e");
+      _showErrorSnackbar("Connection issue. Please try again.");
+    }
+  }
   
   // Helper method to show error snackbar
   void _showErrorSnackbar(String message) {
@@ -2884,783 +3125,6 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
     );
-  }
-
-  void _joinConversationRoom(String conversationId) {
-    if (socket == null || _currentUserId == null) {
-      print('[CHAT] Cannot join conversation room: socket not connected or user ID missing');
-      return;
-    }
-
-    print('[CHAT] Joining conversation room: $conversationId');
-    socket?.emit('join_conversation', {
-      'conversationId': conversationId,
-      'userId': _currentUserId
-    });
-  }
-
-  Widget _buildMessageItem(Message message, int index) {
-    final bool isCurrentUser = message.senderId == _currentUserId;
-    final isTemporary = message.id.contains('_temp');
-    final senderName = isCurrentUser ? "You" : (message.sender?.name ?? "Other user");
-    final messageContent = message.content.isNotEmpty ? message.content : "(No content)";
-    
-    return Container(
-      key: ValueKey(message.id),
-      padding: EdgeInsets.only(
-        left: 14,
-        right: 14,
-        top: 10,
-        bottom: 10,
-      ),
-      child: Align(
-        alignment: isCurrentUser ? Alignment.topRight : Alignment.topLeft,
-        child: InkWell(
-          onTap: () {
-            if (_conversation != null) {
-              markMessagesAsRead(_conversation!.id);
-            }
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: isCurrentUser ? Colors.teal : Color(0xFFE8F5E9),
-            ),
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      senderName,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isCurrentUser ? Colors.white : Colors.black87,
-                        fontSize: 13,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      _formatTimestamp(message.createdAt),
-                      style: TextStyle(
-                        color: isCurrentUser ? Colors.white70 : Colors.black54,
-                        fontSize: 11,
-                      ),
-                    ),
-                    if (isTemporary) ...[
-                      SizedBox(width: 5),
-                      Icon(
-                        Icons.access_time,
-                        size: 12,
-                        color: isCurrentUser ? Colors.white70 : Colors.black54,
-                      ),
-                    ],
-                  ],
-                ),
-                SizedBox(height: 5),
-                Text(
-                  messageContent,
-                  style: TextStyle(
-                    color: isCurrentUser ? Colors.white : Colors.black87,
-                    fontSize: 15,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Add a new method for silent background updates
-  Future<void> _silentMessageRefresh() async {
-    if (!mounted || _isLoadingChat) return;
-    
-    try {
-      final token = await storage.read(key: 'auth_token');
-      if (token == null || token.isEmpty) return;
-      
-      final String convoId = widget.conversationId ?? _conversation?.id ?? '';
-      if (convoId.isEmpty) return;
-      
-      // Don't show any loading indicators or animations
-      http.get(
-        Uri.parse('${ApiConfig.baseUrl}/messages/conversations/$convoId/messages?userId=$_currentUserId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).then((response) {
-        if (!mounted) return;
-        
-        if (response.statusCode == 200) {
-          final List<dynamic> data = json.decode(response.body);
-          final List<Message> newMessages = [];
-          
-          for (var msgData in data) {
-            try {
-              final msg = Message.fromJson(msgData);
-              if (msg.id.isNotEmpty) {
-                newMessages.add(msg);
-              }
-            } catch (_) {
-              // Silently ignore parsing errors
-            }
-          }
-          
-          if (newMessages.isEmpty) return;
-          
-          newMessages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-          final newMessageIds = newMessages.map((msg) => msg.id).toSet();
-          
-          // Check if there are actually new messages we don't have
-          final actuallyNewMessages = newMessageIds.difference(_messageIds);
-          
-          if (actuallyNewMessages.isEmpty) return;
-          
-          // We have new messages, update the list without animation
-          setState(() {
-            _messages = newMessages;
-            _messageIds = newMessageIds;
-          });
-          
-          // If we're scrolled near the bottom, scroll to bottom without animation
-          if (_scrollController.hasClients) {
-            final position = _scrollController.position;
-            final isAtBottom = position.pixels > (position.maxScrollExtent - 150);
-            if (isAtBottom) {
-              // Use delayed to avoid competing with other state updates
-              Future.microtask(() {
-                _scrollToBottom(animate: false);
-              });
-            }
-          }
-          
-          // Mark as read if there are new messages
-          markMessagesAsRead(convoId);
-        }
-      }).catchError((_) {
-        // Silently ignore errors in background polling
-      });
-    } catch (_) {
-      // Silently ignore errors in background polling
-    }
-  }
-
-  // Method to connect to the call socket with detailed logging and error handling
-  void _connectDedicatedCallSocket() async {
-    try {
-      print("[CALL] Starting dedicated call socket connection...");
-      
-      // Get the authentication token if not already available
-      if (_authToken == null) {
-        _authToken = await storage.read(key: 'auth_token');
-        if (_authToken == null) {
-          print("[CALL] Cannot connect call socket: auth token not available");
-          _showErrorSnackbar("Authentication error. Please log in again.");
-          return;
-        }
-      }
-      
-      // Get current user ID if not already available
-      if (_currentUserId == null) {
-        await _getCurrentUserId();
-        if (_currentUserId == null) {
-          print("[CALL] Cannot connect call socket: user ID not available");
-          _showErrorSnackbar("User data missing. Please restart the app.");
-          return;
-        }
-      }
-      
-      print("[CALL] Setting up call socket with userID: $_currentUserId");
-      
-      // Initialize the call socket manager
-      final callSocketManager = 
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      CallSocketManager();
-      bool initSuccess = await callSocketManager.initialize(
-        token: _authToken!,
-        userId: _currentUserId!,
-      );
-      
-      if (!initSuccess) {
-        print("[CALL] Failed to initialize call socket");
-        _showErrorSnackbar("Call connection failed. Please check your network.");
-        return;
-      }
-      
-      // Store the socket
-      callSocket = callSocketManager.socket;
-      
-      if (callSocket == null) {
-        print("[CALL] Failed to get socket instance from manager");
-        _showErrorSnackbar("Call connection error. Please try again.");
-        return;
-      }
-      
-      print("[CALL] Call socket connected successfully");
-      
-      // Setup call event listeners
-      _setupDedicatedCallListeners();
-      
-      // Join the user's call room to receive incoming calls
-      _joinCallUserRoom(_currentUserId!);
-    } catch (e) {
-      print("[CALL] Error connecting call socket: $e");
-      _showErrorSnackbar("Connection error. Please try again.");
-    }
-  }
-}
-
-// Audio Call Screen Implementation
-class ChatAudioCallScreen extends StatefulWidget {
-  final String callId;
-  final String peerId;
-  final io.Socket socket;
-  final String userId;
-
-  ChatAudioCallScreen({
-    required this.callId,
-    required this.peerId,
-    required this.socket,
-    required this.userId,
-  });
-
-  @override
-  _ChatAudioCallScreenState createState() => _ChatAudioCallScreenState();
-}
-
-class _ChatAudioCallScreenState extends State<ChatAudioCallScreen> {
-  bool isMuted = false;
-  bool isSpeakerOn = false;
-  Timer? callTimer;
-  int callDurationSeconds = 0;
-  String peerName = "Caller";
-
-  @override
-  void initState() {
-    super.initState();
-    startCallTimer();
-    setupSocketListeners();
-  }
-
-  void setupSocketListeners() {
-    widget.socket.on('call_ended', (data) {
-      print("[CALL] Call ended: $data");
-      stopCallTimer();
-      
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Call ended"))
-        );
-      }
-    });
-  }
-  
-  void startCallTimer() {
-    callTimer?.cancel();
-    callTimer = Timer.periodic(Duration(seconds: 1), (timer) {
-        setState(() {
-        callDurationSeconds++;
-      });
-    });
-  }
-  
-  void stopCallTimer() {
-    callTimer?.cancel();
-    callTimer = null;
-  }
-  
-  String formatDuration(int seconds) {
-    final minutes = seconds ~/ 60;
-    final remainingSeconds = seconds % 60;
-    return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
-  }
-  
-  void endCall() {
-    widget.socket.emit('end_call', {
-      'callId': widget.callId,
-      'userId': widget.userId,
-    });
-    
-    stopCallTimer();
-    Navigator.pop(context);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.blueGrey[800],
-      body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // User info
-              Column(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.blue[700],
-                    child: Text(
-                      peerName[0].toUpperCase(),
-                      style: TextStyle(fontSize: 32, color: Colors.white),
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  Text(
-                    peerName,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    formatDuration(callDurationSeconds),
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
-              ),
-              
-              // Call controls
-              Padding(
-                padding: EdgeInsets.only(bottom: 40),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    // Mute button
-                    FloatingActionButton(
-                      heroTag: "btn1",
-                      backgroundColor: isMuted ? Colors.red : Colors.white,
-                      child: Icon(
-                        isMuted ? Icons.mic_off : Icons.mic,
-                        color: isMuted ? Colors.white : Colors.black,
-                      ),
-                      onPressed: () {
-            setState(() {
-                          isMuted = !isMuted;
-                        });
-                      },
-                    ),
-                    
-                    // End call button
-                    FloatingActionButton(
-                      heroTag: "btn2",
-                      backgroundColor: Colors.red,
-                      child: Icon(Icons.call_end),
-                      onPressed: endCall,
-                    ),
-                    
-                    // Speaker button
-                    FloatingActionButton(
-                      heroTag: "btn3",
-                      backgroundColor: isSpeakerOn ? Colors.blue : Colors.white,
-                      child: Icon(
-                        isSpeakerOn ? Icons.volume_up : Icons.volume_down,
-                        color: isSpeakerOn ? Colors.white : Colors.black,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          isSpeakerOn = !isSpeakerOn;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-  
-  @override
-  void dispose() {
-    stopCallTimer();
-    super.dispose();
-  }
-}
-
-// Video Call Screen Implementation
-class ChatVideoCallScreen extends StatefulWidget {
-  final String callId;
-  final String peerId;
-  final io.Socket socket;
-  final String userId;
-
-  ChatVideoCallScreen({
-    required this.callId,
-    required this.peerId,
-    required this.socket,
-    required this.userId,
-  });
-
-  @override
-  _ChatVideoCallScreenState createState() => _ChatVideoCallScreenState();
-}
-
-class _ChatVideoCallScreenState extends State<ChatVideoCallScreen> {
-  bool isMuted = false;
-  bool isCameraOn = true;
-  bool isSpeakerOn = true;
-  Timer? callTimer;
-  int callDurationSeconds = 0;
-  String peerName = "Caller";
-  bool isConnected = false;
-  bool isConnecting = true;
-  String callStatus = "Connecting...";
-
-  @override
-  void initState() {
-    super.initState();
-    print("[CALL] VideoCallScreen initialized with callId: ${widget.callId}, peerId: ${widget.peerId}");
-    startCallTimer();
-    setupSocketListeners();
-    _initializeCall();
-  }
-
-  void _initializeCall() async {
-    try {
-      print("[CALL] Initializing video call");
-      
-      // Join the call room
-      widget.socket.emit('join_call_room', {
-        'callId': widget.callId,
-        'userId': widget.userId,
-      });
-      
-      // Signal that we're ready
-      widget.socket.emit('ready_for_call', {
-        'callId': widget.callId,
-        'userId': widget.userId,
-        'peerId': widget.peerId,
-      });
-      
-      print("[CALL] Sent ready_for_call signal");
-      
-      // Update UI state after a delay if still not connected
-      Future.delayed(Duration(seconds: 10), () {
-        if (mounted && !isConnected) {
-          setState(() {
-            isConnecting = false;
-            callStatus = "Connection failed. Try again.";
-          });
-        }
-      });
-    } catch (e) {
-      print("[CALL ERROR] Error initializing call: $e");
-      setState(() {
-        isConnecting = false;
-        callStatus = "Error: $e";
-      });
-    }
-  }
-
-  void setupSocketListeners() {
-    // Handle call ended
-    widget.socket.on('call_ended', (data) {
-      print("[CALL] Call ended: $data");
-      stopCallTimer();
-      
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Call ended"))
-        );
-      }
-    });
-    
-    // Handle connection established
-    widget.socket.on('call_connected', (data) {
-      print("[CALL] Call connected: $data");
-      if (mounted) {
-        setState(() {
-          isConnected = true;
-          isConnecting = false;
-          callStatus = "Connected";
-        });
-      }
-    });
-    
-    // Handle connection error
-    widget.socket.on('call_error', (data) {
-      print("[CALL] Call error: $data");
-      if (mounted) {
-        setState(() {
-          isConnecting = false;
-          callStatus = "Error: ${data['message'] ?? 'Unknown error'}";
-        });
-      }
-    });
-  }
-  
-  void startCallTimer() {
-    callTimer?.cancel();
-    callTimer = Timer.periodic(Duration(seconds: 1), (timer) {
-      setState(() {
-        callDurationSeconds++;
-      });
-    });
-  }
-  
-  void stopCallTimer() {
-    callTimer?.cancel();
-    callTimer = null;
-  }
-  
-  String formatDuration(int seconds) {
-    final minutes = seconds ~/ 60;
-    final remainingSeconds = seconds % 60;
-    return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
-  }
-  
-  void endCall() {
-    widget.socket.emit('end_call', {
-      'callId': widget.callId,
-      'userId': widget.userId,
-      'peerId': widget.peerId,
-    });
-    
-    stopCallTimer();
-    Navigator.pop(context);
-  }
-  
-  void toggleMute() {
-    setState(() {
-      isMuted = !isMuted;
-    });
-    
-    widget.socket.emit('toggle_audio', {
-      'callId': widget.callId,
-      'userId': widget.userId,
-      'muted': isMuted,
-    });
-  }
-  
-  void toggleCamera() {
-    setState(() {
-      isCameraOn = !isCameraOn;
-    });
-    
-    widget.socket.emit('toggle_video', {
-      'callId': widget.callId,
-      'userId': widget.userId,
-      'videoEnabled': isCameraOn,
-    });
-  }
-  
-  void toggleSpeaker() {
-    setState(() {
-      isSpeakerOn = !isSpeakerOn;
-    });
-    
-    widget.socket.emit('toggle_speaker', {
-      'callId': widget.callId,
-      'userId': widget.userId,
-      'speakerOn': isSpeakerOn,
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // Main content area - shows either the video or connecting state
-            Center(
-              child: isConnecting 
-                ? _buildConnectingView()
-                : isConnected 
-                  ? _buildConnectedView()
-                  : _buildErrorView(),
-            ),
-            
-            // Call duration overlay
-            Positioned(
-              top: 20,
-              left: 20,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  isConnected ? formatDuration(callDurationSeconds) : callStatus,
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-            
-            // Controls overlay
-            Positioned(
-              bottom: 40,
-              left: 0,
-              right: 0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Mute button
-                  FloatingActionButton(
-                    heroTag: "btn1",
-                    backgroundColor: isMuted ? Colors.red : Colors.white,
-                    child: Icon(
-                      isMuted ? Icons.mic_off : Icons.mic,
-                      color: isMuted ? Colors.white : Colors.black,
-                    ),
-                    onPressed: toggleMute,
-                  ),
-                  
-                  // End call button
-                  FloatingActionButton(
-                    heroTag: "btn2",
-                    backgroundColor: Colors.red,
-                    child: Icon(Icons.call_end),
-                    onPressed: endCall,
-                  ),
-                  
-                  // Camera toggle button
-                  FloatingActionButton(
-                    heroTag: "btn3",
-                    backgroundColor: isCameraOn ? Colors.white : Colors.grey,
-                    child: Icon(
-                      isCameraOn ? Icons.videocam : Icons.videocam_off,
-                      color: isCameraOn ? Colors.black : Colors.white,
-                    ),
-                    onPressed: toggleCamera,
-                  ),
-                  
-                  // Speaker toggle button
-                  FloatingActionButton(
-                    heroTag: "btn4",
-                    backgroundColor: isSpeakerOn ? Colors.white : Colors.grey,
-                    child: Icon(
-                      isSpeakerOn ? Icons.volume_up : Icons.volume_off,
-                      color: isSpeakerOn ? Colors.black : Colors.white,
-                    ),
-                    onPressed: toggleSpeaker,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildConnectingView() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        CircularProgressIndicator(color: Colors.white),
-        SizedBox(height: 24),
-        Text(
-          "Connecting to call...",
-          style: TextStyle(color: Colors.white, fontSize: 18),
-        ),
-        SizedBox(height: 8),
-        Text(
-          "Waiting for other user",
-          style: TextStyle(color: Colors.white70, fontSize: 14),
-        ),
-      ],
-    );
-  }
-  
-  Widget _buildConnectedView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: double.infinity,
-            height: MediaQuery.of(context).size.height * 0.7,
-            color: Colors.grey[900],
-            child: Center(
-              child: Text(
-                "Remote Video Stream",
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ),
-          
-          // Local video preview
-          Positioned(
-            top: 20,
-            right: 20,
-            child: Container(
-              width: 100,
-              height: 150,
-              color: Colors.grey[800],
-              child: Center(
-                child: Text(
-                  "Local Video",
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildErrorView() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.error_outline, color: Colors.red, size: 64),
-        SizedBox(height: 16),
-        Text(
-          callStatus,
-          style: TextStyle(color: Colors.white, fontSize: 18),
-        ),
-        SizedBox(height: 24),
-        ElevatedButton(
-          onPressed: _initializeCall,
-          child: Text("Retry Connection"),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
-          ),
-        ),
-      ],
-    );
-  }
-  
-  @override
-  void dispose() {
-    stopCallTimer();
-    
-    // Clean up socket listeners
-    widget.socket.off('call_ended');
-    widget.socket.off('call_connected');
-    widget.socket.off('call_error');
-    
-    super.dispose();
   }
 }
 

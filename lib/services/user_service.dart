@@ -6,9 +6,10 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/foundation.dart';
+import '../config/api_config.dart';
 
 class UserService {
-  final String baseUrl = "http://192.168.0.107:3000/users";
+  final String baseUrl = "${ApiConfig.baseUrl}/users";
   final storage = FlutterSecureStorage();
 
   Future<List<Map<String, dynamic>>> getAllDoctors() async {
@@ -101,7 +102,7 @@ class UserService {
     if (file == null) return false;
 
     try {
-      final uploadUrl = 'http://192.168.0.107:3000/files/upload';
+      final uploadUrl = '${ApiConfig.baseUrl}/files/upload';
       
       var request = http.MultipartRequest('POST', Uri.parse(uploadUrl));
       var pic = await http.MultipartFile.fromPath(
@@ -155,7 +156,7 @@ class UserService {
       }
 
       final response = await http.get(
-        Uri.parse('http://192.168.0.107:3000/patient/appointments'),
+        Uri.parse('${ApiConfig.baseUrl}/patient/appointments'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -173,7 +174,7 @@ class UserService {
   }
 
   Future<String> createAppointment(Map<String, dynamic> appointmentData) async {
-    final url = Uri.parse("http://192.168.0.107:3000/patient/appointment");
+    final url = Uri.parse("${ApiConfig.baseUrl}/patient/appointment");
     String? token = await storage.read(key: "auth_token");
     try {
       final response = await http.post(

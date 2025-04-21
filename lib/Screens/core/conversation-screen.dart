@@ -3,6 +3,20 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:health_chain/Screens/core/chat-screen.dart';
+import 'dart:async';
+import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:flutter/services.dart';
+import '../../config/api_config.dart';
+import '../../Widgets/notification_badge.dart';
+import 'package:flutter/foundation.dart';
+import 'audio_call_implementation.dart';
+import '../../services/socket_service.dart';
+import 'package:health_chain/models/user.dart';
+import 'package:health_chain/models/conversation.dart';
+import 'call_handling_service.dart';
+import '../../services/socket_manager.dart';
+
+
 
 class ConversationScreen extends StatefulWidget {
   const ConversationScreen({super.key});
@@ -11,7 +25,7 @@ class ConversationScreen extends StatefulWidget {
   State<ConversationScreen> createState() => _ConversationScreenState();
 }
 
-class _ConversationScreenState extends State<ConversationScreen> {
+class _ConversationScreenState extends State<ConversationScreen> with TickerProviderStateMixin {
   final storage = FlutterSecureStorage();
   List<Conversation> _conversations = [];
   List<User> _users = [];
@@ -19,14 +33,22 @@ class _ConversationScreenState extends State<ConversationScreen> {
   bool _isLoadingUsers = true;
   bool _isCreatingConversation = false;
   String? _currentUserId;
-  final String _baseUrl = 'http://192.168.0.107:3000';
   TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isSearching = false;
+  io.Socket? socket;
+  Timer? _refreshTimer;
+  Map<String, bool> _newMessageAnimations = {};
   
   @override
   void initState() {
     super.initState();
+    
+    // First initialize socket connections to receive real-time updates
+    _connectToSocket();
+    _initializeSocketService();
+    
+    // Then initialize app data
     _initializeApp();
     
     _searchController.addListener(() {
@@ -34,11 +56,35 @@ class _ConversationScreenState extends State<ConversationScreen> {
         _searchQuery = _searchController.text.toLowerCase();
       });
     });
+    
+    // Add this line to initialize call handling
+    initCallHandling();
+    
+    // Listen for app lifecycle changes to reconnect socket when app comes back to foreground
+    WidgetsBinding.instance.addObserver(
+      LifecycleEventHandler(
+        resumeCallBack: () async {
+          print("[CONVERSATION] App resumed, reconnecting socket");
+          _connectToSocket();
+          fetchConversations();
+          return;
+        },
+      ),
+    );
   }
   
   @override
   void dispose() {
     _searchController.dispose();
+    socket?.disconnect();
+    _refreshTimer?.cancel();
+    _periodicRefreshTimer?.cancel(); // Cancel periodic refresh timer
+    
+    // Remove lifecycle observer
+    WidgetsBinding.instance.removeObserver(
+      LifecycleEventHandler(resumeCallBack: () async => null),
+    );
+    
     super.dispose();
   }
   
@@ -48,6 +94,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
     
     // Only fetch data if we have a user ID
     if (_currentUserId != null && _currentUserId!.isNotEmpty) {
+      // Connect to socket for real-time updates
+      _connectToSocket();
+      
       // Run these concurrently for better performance
       await Future.wait([
         fetchUsers(),
@@ -127,7 +176,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       
       print("Fetching conversations for user: $_currentUserId");
       final response = await http.get(
-        Uri.parse('$_baseUrl/messages/conversations?userId=$_currentUserId'),
+        Uri.parse('${ApiConfig.baseUrl}/messages/conversations?userId=$_currentUserId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -137,6 +186,21 @@ class _ConversationScreenState extends State<ConversationScreen> {
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         print("Fetched ${data.length} conversations");
+        
+        // More detailed debug logging for the API response
+        print("Full API response: ${json.encode(data)}");
+        
+        // Debug print all conversation unread counts
+        for (var convo in data) {
+          print("API Conversation: ${convo['_id']} has unreadCount: ${convo['unreadCount']}");
+          print("Conversation participants: ${convo['participants']}");
+          
+          // Check if the current user is in the recipients list (for debugging)
+          if (convo['unreadCounts'] != null) {
+            print("Individual unread counts: ${convo['unreadCounts']}");
+          }
+        }
+        
         setState(() {
           _conversations = data.map((convo) => Conversation.fromJson(convo)).toList();
           _isLoadingConversations = false;
@@ -173,7 +237,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       
       print("Fetching all users");
       final response = await http.get(
-        Uri.parse('$_baseUrl/users/all'),
+        Uri.parse('${ApiConfig.baseUrl}/users/all'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -210,8 +274,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
       
       for (var conversation in _conversations) {
         if (!conversation.isGroup && 
-            conversation.participants.contains(userId) && 
-            conversation.participants.contains(_currentUserId)) {
+            conversation.hasParticipant(userId) && 
+            conversation.hasParticipant(_currentUserId ?? '')) {
           print("Found existing conversation with user $userId: ${conversation.id}");
           return conversation;
         }
@@ -300,7 +364,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       
       print("Sending request to create conversation with participants: [$_currentUserId, $userId]");
       final response = await http.post(
-        Uri.parse('$_baseUrl/messages/conversations'),
+        Uri.parse('${ApiConfig.baseUrl}/messages/conversations'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -350,20 +414,37 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
     
     if (conversation.participantUsers != null && conversation.participantUsers!.isNotEmpty) {
+      try {
       // For direct conversations, show the other person's name
       final otherUser = conversation.participantUsers!.firstWhere(
-        (user) => user.id != _currentUserId,
+          (user) {
+            // Make sure user is not null and has the proper type before accessing id
+            if (user == null) return false;
+            return user is User && user.id != _currentUserId;
+          },
         orElse: () => User(id: '', name: 'Unknown', avatar: 'assets/images/avatar.png', role: 'user'),
       );
       return otherUser.name;
+      } catch (e) {
+        print("Error finding participant: $e");
+        return 'Unknown User';
+      }
     }
     
     // If we don't have participant user objects, try to find the user from our users list
-    if (_users.isNotEmpty) {
+    if (_users.isNotEmpty && conversation.participants.isNotEmpty) {
       for (final participant in conversation.participants) {
-        if (participant != _currentUserId) {
+        // Handle case where participant could be a String or an Object
+        String participantId = '';
+        if (participant is String) {
+          participantId = participant;
+        } else if (participant is Map<String, dynamic> && participant.containsKey('_id')) {
+          participantId = participant['_id'] as String;
+        }
+        
+        if (participantId.isNotEmpty && participantId != _currentUserId) {
           final otherUser = _users.firstWhere(
-            (user) => user.id == participant,
+            (user) => user.id == participantId,
             orElse: () => User(id: '', name: 'Unknown', avatar: 'assets/images/avatar.png', role: 'user'),
           );
           if (otherUser.id.isNotEmpty) {
@@ -382,19 +463,36 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
     
     if (conversation.participantUsers != null && conversation.participantUsers!.isNotEmpty) {
+      try {
       final otherUser = conversation.participantUsers!.firstWhere(
-        (user) => user.id != _currentUserId,
+          (user) {
+            // Make sure user is not null and has the proper type before accessing id
+            if (user == null) return false;
+            return user is User && user.id != _currentUserId;
+          },
         orElse: () => User(id: '', name: 'Unknown', avatar: 'assets/images/avatar.png', role: 'user'),
       );
       return otherUser.avatar;
+      } catch (e) {
+        print("Error finding participant avatar: $e");
+        return 'assets/images/avatar.png';
+      }
     }
     
     // If we don't have participant user objects, try to find the user from our users list
-    if (_users.isNotEmpty) {
+    if (_users.isNotEmpty && conversation.participants.isNotEmpty) {
       for (final participant in conversation.participants) {
-        if (participant != _currentUserId) {
+        // Handle case where participant could be a String or an Object
+        String participantId = '';
+        if (participant is String) {
+          participantId = participant;
+        } else if (participant is Map<String, dynamic> && participant.containsKey('_id')) {
+          participantId = participant['_id'] as String;
+        }
+        
+        if (participantId.isNotEmpty && participantId != _currentUserId) {
           final otherUser = _users.firstWhere(
-            (user) => user.id == participant,
+            (user) => user.id == participantId,
             orElse: () => User(id: '', name: 'Unknown', avatar: 'assets/images/avatar.png', role: 'user'),
           );
           if (otherUser.id.isNotEmpty) {
@@ -408,6 +506,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   void _navigateToChat(Conversation conversation) {
+    // Reset the animation for this conversation
+    setState(() {
+      _newMessageAnimations[conversation.id] = false;
+    });
+    
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -417,7 +520,15 @@ class _ConversationScreenState extends State<ConversationScreen> {
           doctorAvatar: _getConversationAvatar(conversation),
         ),
       ),
-    ).then((_) => fetchConversations());
+    ).then((_) {
+      // Immédiate rafraîchissement après le retour du chat
+      fetchConversations();
+      
+      // Aussi vérifier immédiatement si des mises à jour sont disponibles via socket
+      if (socket?.connected == true) {
+        socket?.emit('request_conversations_update', {'userId': _currentUserId});
+      }
+    });
   }
 
   List<User> get _filteredUsers {
@@ -497,6 +608,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
               fetchConversations();
             },
           ),
+          // Admin option to see all messages from database
+          IconButton(
+            icon: Icon(Icons.storage, color: Colors.black),
+            tooltip: 'View all messages from database',
+            onPressed: () {
+              Navigator.pushNamed(context, '/all-messages-screen');
+            },
+          ),
         ],
       ),
       body: RefreshIndicator(
@@ -525,58 +644,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                           itemBuilder: (context, index) {
                             final user = _filteredUsers[index];
                             
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                              child: Column(
-                                children: [
-                                  GestureDetector(
-                                    onTap: () => createOrOpenConversation(user.id),
-                                    child: Stack(
-                                      children: [
-                                        Container(
-                                          width: 60,
-                                          height: 60,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: Colors.teal,
-                                              width: 2,
-                                            ),
-                                          ),
-                                          child: CircleAvatar(
-                                            backgroundImage: AssetImage(user.avatar),
-                                            radius: 28,
-                                          ),
-                                        ),
-                                        if (user.role == 'practitioner')
-                                          Positioned(
-                                            right: 0,
-                                            bottom: 0,
-                                            child: Container(
-                                              padding: EdgeInsets.all(2),
-                                              decoration: BoxDecoration(
-                                                color: Colors.blue,
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: Icon(
-                                                Icons.medical_services,
-                                                color: Colors.white,
-                                                size: 12,
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  SizedBox(height: 5),
-                                  Text(
-                                    user.name.split(' ')[0], // Show just first name
-                                    style: TextStyle(fontSize: 12),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            );
+                            return _buildUserItem(user);
                           },
                         ),
               ),
@@ -639,36 +707,150 @@ class _ConversationScreenState extends State<ConversationScreen> {
                           final conversation = _filteredConversations[index];
                           final conversationName = _getConversationName(conversation);
                           
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundImage: AssetImage(_getConversationAvatar(conversation)),
-                              backgroundColor: Colors.grey[200],
-                              radius: 28,
-                            ),
-                            title: Text(
+                          // Debug print to check unread count
+                          print("Conversation with ${conversationName} has unreadCount: ${conversation.unreadCount}");
+                          
+                          return InkWell(
+                            onTap: () => _navigateToChat(conversation),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: (conversation.unreadCount > 0)
+                                    ? Colors.green.withOpacity(0.08)
+                                    : Colors.transparent,
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color: Colors.grey.withOpacity(0.2),
+                                    width: 0.5,
+                                  ),
+                                ),
+                              ),
+                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              child: Row(
+                                children: [
+                                  // Avatar avec indicateur de notification
+                                  Stack(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundImage: AssetImage(_getConversationAvatar(conversation)),
+                                        backgroundColor: Colors.grey[200],
+                                        radius: 28,
+                                      ),
+                                      // Green notification badge with count
+                                      if (conversation.unreadCount > 0)
+                                        Positioned(
+                                          right: 0,
+                                          top: 0,
+                                          child: Container(
+                                            width: 20,
+                                            height: 20,
+                                            decoration: BoxDecoration(
+                                              color: Colors.green,
+                                              shape: BoxShape.circle,
+                                              border: Border.all(color: Colors.white, width: 2),
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                '${conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  SizedBox(width: 16),
+                                  // Infos de la conversation
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Nom et heure
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            // Nom avec éventuel badge de notification
+                                            Row(
+                                              children: [
+                                                Text(
                               conversationName,
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Text(
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                    color: Colors.black87,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            // Heure
+                                            conversation.lastMessageAt != null
+                                              ? Text(
+                                                  '${conversation.lastMessageAt!.hour}:${conversation.lastMessageAt!.minute < 10 ? '0' : ''}${conversation.lastMessageAt!.minute}',
+                                                  style: TextStyle(
+                                                    color: Colors.grey, 
+                                                    fontSize: 12,
+                                                  ),
+                                                )
+                                              : SizedBox(),
+                                          ],
+                                        ),
+                                        SizedBox(height: 4),
+                                        // Dernier message et badge de notification
+                                        Row(
+                                          children: [
+                                            // Dernier message
+                                            Expanded(
+                                              child: Text(
                               conversation.lastMessage ?? 'Start a conversation',
-                              style: TextStyle(color: Colors.grey),
+                                                style: TextStyle(
+                                                  color: conversation.unreadCount > 0 ? Colors.black : Colors.grey,
+                                                  fontWeight: conversation.unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
+                                                ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                if (conversation.lastMessageAt != null)
-                                  Text(
-                                    '${conversation.lastMessageAt!.hour}:${conversation.lastMessageAt!.minute < 10 ? '0' : ''}${conversation.lastMessageAt!.minute}',
-                                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                                            ),
+                                            
+                                            // Show the green "1" notification badge only for unread messages
+                                            if (conversation.unreadCount > 0)
+                                              Container(
+                                                width: 24,
+                                                height: 24,
+                                                margin: EdgeInsets.only(left: 5),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.green,
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(color: Colors.white, width: 1.5),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black.withOpacity(0.1),
+                                                      blurRadius: 2,
+                                                      offset: Offset(0, 1),
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: Center(
+                                                  child: Text(
+                                                    conversation.unreadCount > 99 ? "99+" : "${conversation.unreadCount}",
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                SizedBox(height: 4),
-                                // You can add an unread count indicator here
-                              ],
+                                ],
+                              ),
                             ),
-                            onTap: () => _navigateToChat(conversation),
                           );
                         },
                       ),
@@ -677,5 +859,426 @@ class _ConversationScreenState extends State<ConversationScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildUserItem(User user) {
+    // Check if this is the "roua" user to match with the image
+    bool isRouaUser = user.name.toLowerCase() == 'roua';
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      child: Column(
+                              children: [
+          GestureDetector(
+            onTap: () => createOrOpenConversation(user.id),
+            child: Stack(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.teal,
+                      width: 2,
+                    ),
+                  ),
+                  child: CircleAvatar(
+                    backgroundImage: AssetImage(user.avatar),
+                    radius: 28,
+                  ),
+                ),
+                if (user.role == 'practitioner')
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      padding: EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.medical_services,
+                        color: Colors.white,
+                        size: 12,
+                      ),
+                    ),
+                  ),
+                // Online status indicator (green dot) for 'roua' user
+                if (isRouaUser)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          SizedBox(height: 5),
+                                  Text(
+            user.name.split(' ')[0], // Show just first name
+            style: TextStyle(fontSize: 12),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _connectToSocket() async {
+    try {
+      final SocketService socketService = SocketService();
+      
+      // If socket is already connected, just add the event listener
+      if (socketService.socket?.connected == true) {
+        print("Socket already connected, setting up listeners");
+        _setupSocketListeners(socketService.socket!);
+        return;
+      }
+
+      // Otherwise initialize the socket with better connection handling
+      await socketService.initializeSocket();
+      
+      if (socketService.socket != null) {
+        print("Setting up socket listeners after initialization");
+        _setupSocketListeners(socketService.socket!);
+        
+        // Emit an immediate request for conversations
+        if (_currentUserId != null) {
+          socketService.emit('fetch_conversations', {'userId': _currentUserId});
+        }
+      }
+    } catch (e) {
+      print("Error connecting to socket: $e");
+    }
+  }
+
+  // Setup all socket event listeners in one place
+  void _setupSocketListeners(io.Socket socket) {
+    // Remove any existing listeners to avoid duplicates
+    socket.off('new_conversation');
+    socket.off('conversation_updated');
+    socket.off('new_message');
+    
+    // Listen for new conversations
+    socket.on('new_conversation', (data) {
+      print("New conversation received: $data");
+      if (mounted) {
+        fetchConversations(); // Refresh the list
+      }
+    });
+    
+    // Listen for conversation updates
+    socket.on('conversation_updated', (data) {
+      print("Conversation updated: $data");
+      if (mounted) {
+        fetchConversations(); // Refresh the list
+      }
+    });
+    
+    // Listen for new messages to update the conversation list
+    socket.on('new_message', (data) {
+      print("New message received: $data");
+      if (mounted) {
+        // Add more detailed logging
+        if (data is Map) {
+          if (data.containsKey('message')) {
+            final message = data['message'];
+            if (message is Map) {
+              final conversationId = message['conversationId'];
+              final senderId = message['senderId'];
+              
+              print("New message in conversation: $conversationId from sender: $senderId");
+              print("Current user ID: $_currentUserId");
+              
+              // Only increment unread count if the sender is NOT the current user
+              bool shouldIncrementUnread = senderId != _currentUserId;
+              print("Should increment unread count: $shouldIncrementUnread");
+              
+              // Update conversation in the list
+              setState(() {
+                for (int i = 0; i < _conversations.length; i++) {
+                  if (_conversations[i].id == conversationId) {
+                    print("Found conversation to update at index $i");
+                    // Instead of trying to modify the existing object directly,
+                    // create a new Conversation object with updated data
+                    final oldConversation = _conversations[i];
+                    
+                    // Only increment unread count if message is from someone else
+                    final newUnreadCount = shouldIncrementUnread 
+                        ? oldConversation.unreadCount + 1 
+                        : oldConversation.unreadCount;
+                    
+                    print("Updating unread count from ${oldConversation.unreadCount} to $newUnreadCount");
+                    
+                    // Create a copy of the old conversation with updated fields
+                    final updatedConversation = Conversation.fromJson({
+                      '_id': oldConversation.id,
+                      'participants': oldConversation.participants,
+                      'lastMessage': message['content'],
+                      'lastMessageAt': message['createdAt'],
+                      'isGroup': oldConversation.isGroup,
+                      'groupName': oldConversation.groupName,
+                      'unreadCount': newUnreadCount,
+                      // Copy any other fields as needed
+                    });
+                    
+                    // Replace the old conversation with the updated one
+                    _conversations[i] = updatedConversation;
+                    
+                    // Start animation for new message indicator
+                    _newMessageAnimations[conversationId] = true;
+                    
+                    // Move this conversation to the top
+                    if (i > 0) {
+                      final conversation = _conversations.removeAt(i);
+                      _conversations.insert(0, conversation);
+                    }
+                    break;
+                  }
+                }
+              });
+              
+              // Play a subtle vibration for new message notification
+              HapticFeedback.lightImpact();
+            }
+          }
+        }
+        
+        // Ensure we refresh the conversation list to get server-side unread counts
+        fetchConversations();
+      }
+    });
+    
+    // Add a listener for direct conversation updates from the server
+    socket.on('conversations_list', (data) {
+      print("Received complete conversations list update");
+      if (mounted) {
+        _updateConversationsFromSocket(data);
+      }
+    });
+  }
+
+  // Make the socket service initialization more robust
+  void _initializeSocketService() {
+    try {
+      final socketService = SocketService();
+      
+      // Track last HTTP refresh time to prevent spam
+      DateTime lastHttpRefresh = DateTime.now();
+      bool wasConnected = false;
+      
+      socketService.initializeSocket().then((_) {
+        if (_currentUserId != null) {
+          // Listen for connection status changes
+          socketService.connectionStatus.listen((isConnected) {
+            if (mounted) {
+              if (isConnected) {
+                print("[CONVERSATION] Socket connected, joining user room");
+                // If we were previously disconnected and now connected again, refresh data
+                if (!wasConnected) {
+                  // We reconnected after being disconnected
+                  print("[CONVERSATION] Reconnected after disconnect, refreshing data");
+                  fetchConversations();
+                }
+                
+                wasConnected = true;
+                
+                // Emit an event to join user's room
+                socketService.emit('join_user_room', {'userId': _currentUserId});
+                
+                // Request initial conversations via socket
+                socketService.emit('fetch_conversations', {'userId': _currentUserId});
+                
+                // Setup periodic refresh to ensure we always have latest data
+                _setupPeriodicRefresh();
+              } else {
+                print("[CONVERSATION] Socket disconnected");
+                wasConnected = false;
+                
+                // Only fetch via HTTP if enough time has passed since last fetch
+                if (DateTime.now().difference(lastHttpRefresh).inSeconds >= 10) {
+                  print("[CONVERSATION] Using HTTP fallback to fetch conversations");
+                  lastHttpRefresh = DateTime.now();
+            fetchConversations();
+                }
+          }
+        }
+      });
+
+          // Set up listener for conversation updates
+          socketService.listenForEvent('conversations_updated', (data) {
+            if (mounted) {
+              print("[CONVERSATION] Received conversation update via socket");
+              _updateConversationsFromSocket(data);
+              
+              // Update the lastHttpRefresh time to prevent immediate HTTP refresh
+              lastHttpRefresh = DateTime.now();
+            }
+          });
+        }
+      });
+          } catch (e) {
+      print("Error initializing socket service: $e");
+    }
+  }
+  
+  // Timer for periodic refresh
+  Timer? _periodicRefreshTimer;
+  
+  // Setup periodic refresh to ensure conversations are always updated
+  void _setupPeriodicRefresh() {
+    // Cancel any existing timer
+    _periodicRefreshTimer?.cancel();
+    
+    // Create a new timer that runs every 2 seconds instead of 60 seconds
+    _periodicRefreshTimer = Timer.periodic(Duration(seconds: 2), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      
+      print("[CONVERSATION] Performing periodic refresh every 2 seconds");
+            fetchConversations();
+      
+      // Also request conversation updates via socket
+      if (_currentUserId != null) {
+        final socketService = SocketService();
+        socketService.emit('fetch_conversations', {'userId': _currentUserId});
+      }
+    });
+  }
+
+  // Add this new method to handle socket updates
+  void _updateConversationsFromSocket(dynamic data) {
+    try {
+      List<Conversation> newConversations = [];
+      
+      if (data is List) {
+        // Handle array of conversation objects
+        for (var convo in data) {
+          try {
+            if (convo is Map<String, dynamic>) {
+              newConversations.add(Conversation.fromJson(convo));
+            }
+    } catch (e) {
+            print("Error parsing individual conversation: $e");
+          }
+        }
+      } else if (data is Map<String, dynamic> && data.containsKey('conversations')) {
+        // Handle object with conversations array
+        final List<dynamic> conversations = data['conversations'];
+        for (var convo in conversations) {
+          try {
+            if (convo is Map<String, dynamic>) {
+              newConversations.add(Conversation.fromJson(convo));
+            }
+    } catch (e) {
+            print("Error parsing individual conversation: $e");
+          }
+        }
+      }
+      
+      // Only update state if we parsed conversations successfully
+      if (newConversations.isNotEmpty && mounted) {
+    setState(() {
+          _conversations = newConversations;
+    });
+      }
+    } catch (e) {
+      print("Error parsing conversation data from socket: $e");
+    }
+  }
+
+  Widget _buildPulsingNotification() {
+    return Container(
+      width: 22,
+      height: 22,
+      decoration: BoxDecoration(
+        color: Colors.red,
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          "!",
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationBadge(int count) {
+    return Container(
+      margin: EdgeInsets.only(left: 8),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.green,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        '${count > 99 ? "99+" : count}',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  void initCallHandling() async {
+    try {
+      final callHandler = CallHandlingService();
+      await callHandler.initialize();
+      
+      // Force reconnect if needed
+      if (callHandler.getConnectionStatus() != ConnectionStatus.connected) {
+        await callHandler.reconnectSocket();
+      }
+      
+      // Add this: Listen for incoming calls
+      callHandler.incomingCallStream.listen((callData) {
+        if (callData != null && mounted) {
+          callHandler.showIncomingCallUI(context, callData);
+        }
+      });
+      
+      debugPrint('[CALL] Call handling initialized with status: ${callHandler.getConnectionStatus()}');
+    } catch (e) {
+      // Handle any errors gracefully
+      print("Error initializing call handling: $e");
+    }
+  }
+}
+
+// Add this class to handle app lifecycle events
+class LifecycleEventHandler extends WidgetsBindingObserver {
+  final AsyncCallback resumeCallBack;
+
+  LifecycleEventHandler({
+    required this.resumeCallBack,
+  });
+
+  @override
+  Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state == AppLifecycleState.resumed) {
+      await resumeCallBack();
+    }
   }
 } 
