@@ -1,9 +1,15 @@
+import 'dart:async';
+
+import 'package:admin_health_chain/services/gemini_ai_service.dart';
 import 'package:admin_health_chain/services/role_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/admin_service.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:math' as math;
+import 'dart:ui';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:avatar_glow/avatar_glow.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,6 +21,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
   final UserService _userService = UserService();
   final RoleService _roleService = RoleService();
+  final GeminiService _geminiService = GeminiService();
+
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   List<Map<String, dynamic>> _allUsers = [];
   Future<Map<String, dynamic>>? _userFuture;
@@ -27,6 +35,141 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   bool _isAnalyzing = false;
   String? _currentAnalyzingUserId;
   
+    stt.SpeechToText _speech = stt.SpeechToText();
+    bool _isListening = false;
+    String _voiceText = '';
+    String? _command;
+    // Add this method to initialize speech recognition
+    void _initializeSpeech() async {
+      bool available = await _speech.initialize(
+        onStatus: (status) => print('Status: $status'),
+        onError: (error) => _showErrorDialog('Voice Error', error.errorMsg),
+      );
+
+      if (!available) {
+        _showErrorDialog('Voice Unavailable', 'Speech recognition not available');
+      }
+    }
+
+
+    // Add this method to process voice commands
+    // Add in your HomePage class
+    Future<void> _loadDoctors() async {
+      try {
+        print('load doctors methods');
+        setState(() => _isLoading = true);
+        final doctors = await _userService.findDoctors();
+        setState(() {
+          _allUsers = doctors;
+          _showAllUsers = true;
+        });
+      } catch (e) {
+        _showErrorDialog('Doctor List Error', e.toString());
+      } finally {
+        setState(() => _isLoading = false);
+      }
+    }
+
+        Future<void> _loadPatients() async {
+          try {
+            print('load patients methods');
+            setState(() => _isLoading = true);
+            final patients = await _userService.findPatients();
+            setState(() {
+              _allUsers = patients;
+              _showAllUsers = true;
+            });
+          } catch (e) {
+            _showErrorDialog('Doctor List Error', e.toString());
+          } finally {
+            setState(() => _isLoading = false);
+          }
+        }
+
+
+void _startListening() async {
+  if (!_isListening) {
+    setState(() => _isListening = true);
+    
+    await _speech.listen(
+      onResult: (result) async {
+        if (result.finalResult) {
+
+          final command = await _geminiService.processVoiceCommand(result.recognizedWords); 
+          print('Recognized command: $command');      
+
+          Timer(Duration(seconds: 5), () {
+            // Code to execute after delay
+            print('This runs after 5 seconds');
+            print('Recognized command: $command');      
+            setState(() {
+              _isListening = false;
+              _command = command;
+            });
+        
+            if (_command != null) {
+              _handleVoiceCommand(_command!);
+            } else {
+              _showErrorDialog(
+                'Unrecognized Command',
+                'Could not understand: "${result.recognizedWords}"',
+              );
+            }
+          });   
+
+
+
+        }
+      },
+      listenFor: Duration(seconds: 5),
+    );
+  }
+}
+
+void _handleVoiceCommand(String command) {
+  switch (command) {
+    case 'practitionerlist':
+      print('practitionerlist  Command');
+      _loadDoctors();
+      break;
+    case 'patientlist':
+      print('patientlist  Command');
+      _loadPatients();
+      break;
+    case 'refresh':
+      print('refresh Command');
+      break;
+    default:
+      _showErrorDialog(
+        'Unknown Command',
+        'The system didn\'t recognize your request',
+      );
+  }
+}
+  // Add this widget to your build method
+    Widget _buildVoiceButton() {
+      return Positioned(
+        bottom: 30,
+        right: 30,
+        child: AvatarGlow(
+          animate: _isListening,
+          glowColor: _medicalColors[0],
+          endRadius: 60.0,
+          duration: Duration(milliseconds: 2000),
+          repeat: true,
+          child: FloatingActionButton(
+            onPressed: _startListening,
+            backgroundColor: _medicalColors[0],
+            child: Icon(
+              _isListening ? Icons.mic : Icons.mic_none,
+              color: Colors.white,
+              size: 32,
+            ),
+          ),
+        ),
+      );
+    }
+
   // Animation controllers
   late AnimationController _pulseController;
   final List<Color> _medicalColors = [
@@ -39,6 +182,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   @override
   void initState() {
     super.initState();
+      _initializeSpeech();
     _loadInitialData();
     _pulseController = AnimationController(
       vsync: this,
@@ -132,129 +276,378 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
 
-  void _showAnalysisDialog(BuildContext context, Map<String, dynamic> analysis) {
-    final title = analysis['title'] ?? 'Titre inconnu';
-    final isFraud = analysis['Fraude'] == true;
-    final confidence = analysis['confidenceScore']?.toString() ?? 'Non défini';
-    final observations = analysis['observations'] ?? 'Aucune observation.';
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0),
+ void _showAnalysisDialog(BuildContext context, Map<String, dynamic> analysis) {
+  final title = analysis['title'] ?? 'Titre inconnu';
+  final isFraud = analysis['Fraude'] == true;
+  final isValid = analysis ['Valide'] == true;
+  final confidence = analysis['confidenceScore']?.toString() ?? 'Non défini';
+  final observations = analysis['observations'] ?? 'Aucune observation.';
+  
+  // Animation pour l'entrée du dialogue
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: false,
+    transitionDuration: const Duration(milliseconds: 400),
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return ScaleTransition(
+        scale: Tween<double>(begin: 0.8, end: 1.0).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
         ),
-        elevation: 10,
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20.0),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isFraud 
-                ? [Colors.red.shade50, Colors.white] 
-                : [Colors.green.shade50, Colors.white],
+        child: FadeTransition(
+          opacity: animation,
+          child: child,
+        ),
+      );
+    },
+    pageBuilder: (context, animation, secondaryAnimation) {
+      return Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24.0),
+        ),
+        elevation: 20,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 400,
+            maxHeight: MediaQuery.of(context).size.height * 0.8, // Limite la hauteur à 80% de l'écran
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24.0),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isFraud 
+                  ? [Colors.red.shade100, Colors.red.shade50] 
+                  : [Colors.green.shade100, Colors.green.shade50],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: (isFraud ? Colors.red : Colors.green).withOpacity(0.3),
+                  blurRadius: 20,
+                  spreadRadius: 1,
+                )
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // En-tête avec effet glassmorphisme
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 25),
+                      decoration: BoxDecoration(
+                        color: (isFraud ? Colors.red[700] : Colors.green[700])!.withOpacity(0.85),
+                      ),
+                      child: Row(
+                        children: [
+                          TweenAnimationBuilder<double>(
+                            tween: Tween<double>(begin: 0.0, end: 1.0),
+                            duration: const Duration(seconds: 1),
+                            builder: (context, value, child) {
+                              return Transform.scale(
+                                scale: 0.8 + (value * 0.2),
+                                child: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    isFraud ? Icons.gpp_bad_rounded : Icons.verified_user_rounded,
+                                    color: Colors.white,
+                                    size: 32,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isFraud ? 'Document Suspect' : 'Document Authentique',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                AnimatedDefaultTextStyle(
+                                  duration: const Duration(milliseconds: 300),
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.85),
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14,
+                                  ),
+                                  child: Text(
+                                    isFraud ? 'Attention: Anomalies détectées' : 'Vérification réussie'
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // Contenu avec défilement
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Container(
+                      padding: const EdgeInsets.all(25),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Score de confiance avec indicateur visuel
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 25),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "Score de confiance",
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey[800],
+                                      ),
+                                    ),
+                                    TweenAnimationBuilder<double>(
+                                      tween: Tween<double>(begin: 0, end: double.parse(confidence) / 100),
+                                      duration: const Duration(milliseconds: 1500),
+                                      curve: Curves.easeOutCubic,
+                                      builder: (context, value, _) {
+                                        return Text(
+                                          "${(value * 100).toInt()}%",
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: isFraud ? Colors.red[700] : Colors.green[700],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween<double>(begin: 0, end: double.parse(confidence) / 100),
+                                  duration: const Duration(milliseconds: 1500),
+                                  curve: Curves.easeOutCubic,
+                                  builder: (context, value, _) {
+                                    return ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Stack(
+                                        children: [
+                                          Container(
+                                            height: 8,
+                                            width: double.infinity,
+                                            color: Colors.grey[200],
+                                          ),
+                                          Container(
+                                            height: 8,
+                                            width: MediaQuery.of(context).size.width * value * 0.7,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: isFraud 
+                                                  ? [Colors.red.shade300, Colors.red.shade700]
+                                                  : [Colors.green.shade300, Colors.green.shade700],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          // Informations du document
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 20),
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildImprovedInfoRow(
+                                  icon: Icons.description_outlined,
+                                  label: "Document",
+                                  value: title,
+                                  iconColor: isFraud ? Colors.red[400]! : Colors.green[400]!,
+                                ),
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Divider(height: 1),
+                                ),
+                                _buildImprovedInfoRow(
+                                  icon: Icons.notes_outlined,
+                                  label: "Observations",
+                                  value: "",
+                                  iconColor: isFraud ? Colors.red[400]! : Colors.green[400]!,
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 36.0, top: 8),
+                                  child: Container(
+                                    constraints: BoxConstraints(
+                                      maxHeight: 200, // Hauteur maximale pour les observations
+                                    ),
+                                    child: SingleChildScrollView(
+                                      child: Text(
+                                        observations,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey[700],
+                                          height: 1.5,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          // Boutons d'action
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  style: ElevatedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    backgroundColor: isFraud ? Colors.red[600] : Colors.green[600],
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  icon: const Icon(Icons.check_circle_outline, size: 20),
+                                  label: const Text(
+                                    'Fermer',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              CircleAvatar(
+                                backgroundColor: Colors.grey[200],
+                                radius: 24,
+                                child: IconButton(
+                                  onPressed: () {
+                                    // Action pour partager ou exporter l'analyse
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Export de l\'analyse...')),
+                                    );
+                                  },
+                                  icon: Icon(
+                                    Icons.share_outlined,
+                                    color: Colors.grey[700],
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  AnimatedBuilder(
-                    animation: _pulseController,
-                    builder: (context, child) {
-                      return Transform.scale(
-                        scale: 1.0 + (_pulseController.value * 0.1),
-                        child: Icon(
-                          isFraud ? Icons.warning_amber_rounded : Icons.verified,
-                          color: isFraud ? Colors.red : Colors.green,
-                          size: 36,
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 12),
-                  Flexible(
-                    child: Text(
-                      isFraud ? 'Document Suspect' : 'Document Authentique',
-                      style: TextStyle(
-                        color: isFraud ? Colors.red[700] : Colors.green[700],
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const Divider(height: 30),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 5,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(15),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildAnalysisInfoRow(Icons.description, "Titre", title),
-                    const SizedBox(height: 12),
-                    _buildAnalysisInfoRow(
-                      Icons.shield, 
-                      "Confiance", 
-                      "$confidence%",
-                      textColor: isFraud ? Colors.red[700] : Colors.green[700],
-                      fontWeight: FontWeight.bold,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildAnalysisInfoRow(Icons.remove_red_eye, "Observations", ""),
-                    const SizedBox(height: 5),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 32.0),
-                      child: Text(
-                        observations,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[800],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  backgroundColor: _medicalColors[0],
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                ),
-                child: const Text(
-                  'Fermer',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
+        ),
+      );
+    },
+  );
+}
+
+Widget _buildImprovedInfoRow({
+  required IconData icon,
+  required String label,
+  required String value,
+  required Color iconColor,
+}) {
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(
+          icon,
+          color: iconColor,
+          size: 18,
         ),
       ),
-    );
-  }
+      const SizedBox(width: 12),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            if (value.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey[900],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
 
   Widget _buildAnalysisInfoRow(IconData icon, String label, String value, {Color? textColor, FontWeight? fontWeight}) {
     return Row(
@@ -375,6 +768,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 fontWeight: FontWeight.bold,
               ),
             ),
+            _buildVoiceButton(),
+
           ],
         ),
         backgroundColor: Colors.white,
@@ -1107,6 +1502,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final analysisResult = _analysisResults[userId];
     final isAnalyzed = analysisResult != null;
     final isLoadingAnalysis = _isAnalyzing && _currentAnalyzingUserId == userId;
+    
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1162,6 +1558,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           ),
                     label: Text(isAnalyzed ? 'Voir analyse' : 'Vérification'),
                     onPressed: isLoadingAnalysis 
+                    
                         ? null 
                         : () => isAnalyzed 
                             ? _showAnalysisDialog(context, analysisResult)
@@ -1580,6 +1977,7 @@ class _MedicalLoadingAnimationState extends State<MedicalLoadingAnimation>
   @override
   void initState() {
     super.initState();
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),

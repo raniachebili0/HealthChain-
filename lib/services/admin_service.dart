@@ -131,4 +131,34 @@ Future<Map<String, dynamic>> analyzeDocument(String mediaPath) async {
       );
     }
   }
+
+// Add to UserService class
+Future<List<Map<String, dynamic>>> findDoctors() async {
+  try {
+    final String? token = await _getAuthToken();
+    final response = await http.get(
+      Uri.parse('$baseUrl/users/doctors'),
+      headers: _buildHeaders(token),
+    );
+    
+    return List<Map<String, dynamic>>.from(_handleResponse(response));
+  } catch (e) {
+    throw Exception('Failed to fetch doctors: ${e.toString()}');
+  }
+}
+
+Future<List<Map<String, dynamic>>> findPatients() async {
+  try {
+    final String? token = await _getAuthToken();
+    final response = await http.get(
+      Uri.parse('$baseUrl/users/patients'),
+      headers: _buildHeaders(token),
+    );
+    
+    return List<Map<String, dynamic>>.from(_handleResponse(response));
+  } catch (e) {
+    throw Exception('Failed to fetch patients: ${e.toString()}');
+  }
+}
+
 }
