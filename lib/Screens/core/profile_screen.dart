@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:health_chain/Screens/core/profile_view_model.dart';
+import 'package:health_chain/routes/app_router.dart';
 import 'package:provider/provider.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -27,8 +28,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.only(
-              left: 40.w, right: 40.w, top: 20.h, bottom: 70.h),
+          padding:
+              EdgeInsets.only(left: 40.w, right: 40.w, top: 20.h, bottom: 70.h),
           child: Column(
             children: [
               if (profileViewModel.isLoading)
@@ -161,9 +162,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                context.read<ProfileViewModel>().logout(context);
+              onPressed: () async {
+                await context.read<ProfileViewModel>().logout(context);
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  Navigator.pushReplacementNamed(context, AppRoutes.login);
+                }
               },
               child: const Text('Confirm'),
             ),

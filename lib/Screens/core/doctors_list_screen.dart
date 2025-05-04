@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/Screens/core/docter_detailles_screnn.dart';
 import 'package:health_chain/services/user_service.dart';
 import 'package:health_chain/utils/colors.dart';
@@ -68,7 +69,9 @@ class _DoctorslistscreenState extends State<Doctorslistscreen> {
               iconSize: 30,
               icon: Icon(Icons.notifications_rounded),
               color: Color(0xD25B5B5B),
-              onPressed: () {},
+              onPressed: () {
+                Navigator.pushNamed(context, AppRoutes.notificationScreen);
+              },
             ),
           ),
         ],

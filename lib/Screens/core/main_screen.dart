@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:health_chain/Screens/core/documents_screen.dart';
+import 'package:health_chain/Screens/core/home_screen.dart';
 import 'package:health_chain/Screens/core/profile_screen.dart';
 import 'package:health_chain/Screens/core/rdv_screen.dart';
+import 'package:health_chain/routes/app_router.dart';
 import 'package:health_chain/utils/colors.dart';
 
 import 'convesations_screen.dart';
-import 'home_screen.dart';
-import 'documents_screen.dart';
 import 'notification_screen.dart';
 
 class BottomNavBar extends StatefulWidget {
@@ -42,7 +43,9 @@ class _BottomNavBarState extends State<BottomNavBar> {
                 iconSize: 30,
                 icon: Icon(Icons.notifications_rounded),
                 color: Color(0xD25B5B5B),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pushNamed(context, AppRoutes.notificationScreen);
+                },
               )
             ]),
           ),

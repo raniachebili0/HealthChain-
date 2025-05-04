@@ -52,7 +52,9 @@ class _FileListView extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_rounded),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.pushNamed(context, AppRoutes.notificationScreen);
+            },
           ),
         ],
       ),

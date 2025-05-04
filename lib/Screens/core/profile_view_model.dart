@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:health_chain/routes/app_router.dart';
@@ -13,7 +14,9 @@ class ProfileViewModel extends ChangeNotifier {
   ProfileViewModel(this._userService);
 
   Map<String, dynamic>? get userData => _userData;
+
   bool get isLoading => _isLoading;
+
   String? get error => _error;
 
   Future<void> loadUserData() async {
@@ -35,9 +38,9 @@ class ProfileViewModel extends ChangeNotifier {
 
   Future<void> logout(BuildContext context) async {
     try {
+      await FirebaseMessaging.instance.deleteToken();
       await _storage.delete(key: "auth_token");
       await _storage.delete(key: "user_role");
-      Navigator.pushReplacementNamed(context, AppRoutes.login);
     } catch (e) {
       print("Error during logout: $e");
       _error = "Failed to logout: $e";
@@ -59,4 +62,4 @@ class ProfileViewModel extends ChangeNotifier {
     print("Profile clicked");
     // Implement profile navigation
   }
-} 
+}
