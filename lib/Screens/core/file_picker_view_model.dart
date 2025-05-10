@@ -22,8 +22,11 @@ class FilePickerViewModel extends ChangeNotifier {
   }) : _medicalRecordsService = medicalRecordsService;
 
   bool get isLoading => _isLoading;
+
   String? get error => _error;
+
   String? get selectedFilePath => _selectedFilePath;
+
   bool get hasSelectedFile => _selectedFilePath != null;
 
   Future<void> pickFile() async {
@@ -36,7 +39,8 @@ class FilePickerViewModel extends ChangeNotifier {
       if (result != null && result.files.single.path != null) {
         _selectedFilePath = result.files.single.path!;
         if (_selectedFilePath!.toLowerCase().endsWith('.pdf')) {
-          pdfController = PdfController(document: PdfDocument.openFile(_selectedFilePath!));
+          pdfController =
+              PdfController(document: PdfDocument.openFile(_selectedFilePath!));
         }
         notifyListeners();
       }
@@ -46,11 +50,11 @@ class FilePickerViewModel extends ChangeNotifier {
     }
   }
 
-  Future<bool> uploadFile() async {
+  Future<String?> uploadFile() async {
     if (_selectedFilePath == null || !File(_selectedFilePath!).existsSync()) {
       _error = 'No file selected or invalid file path';
       notifyListeners();
-      return false;
+      return 'error';
     }
 
     _isLoading = true;
@@ -59,24 +63,22 @@ class FilePickerViewModel extends ChangeNotifier {
 
     try {
       final file = File(_selectedFilePath!);
-      final fileType = lookupMimeType(file.path) ?? 'application/octet-stream';
-      
-      final response = await _medicalRecordsService.uploadFile(
-        file,
-        category,
-      );
-
-      // Refresh the files list after successful upload
-      await _medicalRecordsService.loadFiles(category);
+      final response = await _medicalRecordsService.uploadFile(file, category);
 
       _isLoading = false;
       notifyListeners();
-      return true;
+
+      if (response['message'] == 'file type invalide') {
+        return 'invalid_type';
+      }
+
+      await _medicalRecordsService.loadFiles(category);
+      return 'success';
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
-      return false;
+      return 'error';
     }
   }
 
@@ -91,4 +93,4 @@ class FilePickerViewModel extends ChangeNotifier {
     _error = null;
     notifyListeners();
   }
-} 
+}

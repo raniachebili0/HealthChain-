@@ -23,7 +23,7 @@ class FilePickerScreen extends StatelessWidget {
   final VoidCallback? onFileUploaded;
 
   const FilePickerScreen({
-    Key? key, 
+    Key? key,
     required this.category,
     this.onFileUploaded,
   }) : super(key: key);
@@ -86,7 +86,8 @@ class _FilePickerView extends StatelessWidget {
                       padding: const EdgeInsets.only(bottom: 16),
                       child: Text(
                         viewModel.error!,
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.error),
                       ),
                     ),
                   SizedBox(
@@ -122,12 +123,29 @@ class _FilePickerView extends StatelessWidget {
                   MyButton(
                     buttonFunction: () async {
                       if (viewModel.hasSelectedFile) {
-                        final success = await viewModel.uploadFile();
-                        if (success && context.mounted) {
-                          if (onFileUploaded != null) {
-                            onFileUploaded!();
+                        final result = await viewModel.uploadFile();
+                        if (context.mounted) {
+                          if (result == 'success') {
+                            if (onFileUploaded != null) {
+                              onFileUploaded!();
+                            }
+                            Navigator.pop(context);
+                          } else if (result == 'invalid_type') {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Invalid File Type'),
+                                content:
+                                    const Text('Upload a valid file category.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
                           }
-                          Navigator.pop(context);
                         }
                       }
                     },
@@ -144,8 +162,10 @@ class _FilePickerView extends StatelessWidget {
 
   Widget _buildFilePreview(String filePath) {
     final fileExtension = filePath.split('.').last.toLowerCase();
-    
-    if (fileExtension == 'jpg' || fileExtension == 'jpeg' || fileExtension == 'png') {
+
+    if (fileExtension == 'jpg' ||
+        fileExtension == 'jpeg' ||
+        fileExtension == 'png') {
       return Container(
         decoration: BoxDecoration(
           color: Colors.white30,
