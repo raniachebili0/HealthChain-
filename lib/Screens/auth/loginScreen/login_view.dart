@@ -130,7 +130,7 @@ class LoginScreen extends StatelessWidget {
                                   style: CustomTextStyle.h4),
                               InkWell(
                                 onTap: () => Navigator.pushNamed(
-                                    context, AppRoutes.inscription),
+                                    context, '/inscription_view'),
                                 child: Text('Sign up ',
                                     style: CustomTextStyle.lien),
                               ),

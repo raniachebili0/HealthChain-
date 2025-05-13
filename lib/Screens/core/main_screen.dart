@@ -44,7 +44,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
                 icon: Icon(Icons.notifications_rounded),
                 color: Color(0xD25B5B5B),
                 onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.notificationScreen);
+                  Navigator.pushNamed(context, '/notification_screen');
                 },
               )
             ]),

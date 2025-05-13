@@ -19,7 +19,7 @@ class DoctorFormViewModel extends ChangeNotifier {
   // button function
   void buttonAction(GlobalKey<FormState> formKey, BuildContext context) async {
     if (formKey.currentState!.validate()) {
-      Navigator.pushReplacementNamed(context, AppRoutes.imagePickerScreen);
+      Navigator.pushReplacementNamed(context, '/profile_img_view');
       // print(_formKey.currentState!.validate());
       // final _authService = Provider.of<AuthService>(context, listen: false);
       // // Retrieve user input values from form fields

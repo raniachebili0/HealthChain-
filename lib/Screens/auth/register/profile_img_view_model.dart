@@ -13,11 +13,14 @@ class ProfileImageViewModel extends ChangeNotifier {
   ProfileImageViewModel(this._authService);
 
   File? get selectedImage => _selectedImage;
+
   bool get isLoading => _isLoading;
+
   String? get errorMessage => _errorMessage;
 
   Future<void> pickImage() async {
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final pickedFile =
+        await ImagePicker().pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
       _selectedImage = File(pickedFile.path);
@@ -42,7 +45,8 @@ class ProfileImageViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final userRole = (doctorId == null || doctorId.isEmpty) ? "patient" : "practitioner";
+      final userRole =
+          (doctorId == null || doctorId.isEmpty) ? "patient" : "practitioner";
 
       final signupResult = await _authService.signup(
         email: email,
@@ -59,7 +63,7 @@ class ProfileImageViewModel extends ChangeNotifier {
 
       if (signupResult == "success") {
         print("Signup successful!");
-        Navigator.pushReplacementNamed(context, AppRoutes.login);
+        Navigator.pushReplacementNamed(context, '/login_view');
       } else {
         _errorMessage = "Signup failed: $signupResult";
         print(_errorMessage);
@@ -72,4 +76,4 @@ class ProfileImageViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
-} 
+}

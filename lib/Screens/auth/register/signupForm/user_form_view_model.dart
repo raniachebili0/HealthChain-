@@ -76,7 +76,7 @@ class UserFormViewModel extends ChangeNotifier {
   // button function
   void buttonAction(GlobalKey<FormState> formKey, BuildContext context) async {
     if (formKey.currentState!.validate()) {
-      Navigator.pushNamed(context, AppRoutes.doctorFormView);
+      Navigator.pushNamed(context, '/doctor_form_view');
       String gender = selectedGender;
       String name = nomController.text;
       String password = mdpController.text;

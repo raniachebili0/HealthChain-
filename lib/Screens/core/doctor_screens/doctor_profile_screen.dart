@@ -64,7 +64,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                                   await storage.delete(key: "auth_token");
                                   await storage.delete(key: "user_role");
                                   Navigator.pushReplacementNamed(
-                                      context, AppRoutes.login);
+                                      context, '/login_view');
                                 },
                                 child: Text('Confirm'),
                               ),

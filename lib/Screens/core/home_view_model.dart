@@ -12,7 +12,9 @@ class HomeViewModel extends ChangeNotifier {
   HomeViewModel(this._userService);
 
   List<Map<String, dynamic>>? get doctors => _doctors;
+
   bool get isLoading => _isLoading;
+
   String? get error => _error;
 
   Future<void> loadDoctors() async {
@@ -32,10 +34,11 @@ class HomeViewModel extends ChangeNotifier {
   }
 
   void navigateToDoctorsList(BuildContext context) {
-    Navigator.pushNamed(context, AppRoutes.doctorsListScreen);
+    Navigator.pushNamed(context, '/doctors_list_screen');
   }
 
-  void navigateToDoctorDetails(BuildContext context, Map<String, dynamic> doctor) {
+  void navigateToDoctorDetails(
+      BuildContext context, Map<String, dynamic> doctor) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -45,11 +48,11 @@ class HomeViewModel extends ChangeNotifier {
   }
 
   void navigateToChat(BuildContext context) {
-    Navigator.pushNamed(context, AppRoutes.chatScreen);
+    Navigator.pushNamed(context, '/chat_screen');
   }
 
   void checkNow() {
     // Implement check now functionality
     print("Check Now clicked");
   }
-} 
+}

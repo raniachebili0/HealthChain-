@@ -166,7 +166,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 await context.read<ProfileViewModel>().logout(context);
                 if (context.mounted) {
                   Navigator.of(context).pop();
-                  Navigator.pushReplacementNamed(context, AppRoutes.login);
+                  Navigator.pushReplacementNamed(context, '/login_view');
                 }
               },
               child: const Text('Confirm'),

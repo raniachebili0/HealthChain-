@@ -53,7 +53,7 @@ class _FileListView extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.notifications_rounded),
             onPressed: () {
-              Navigator.pushNamed(context, AppRoutes.notificationScreen);
+              Navigator.pushNamed(context, '/notification_screen');
             },
           ),
         ],
@@ -82,7 +82,8 @@ class _FileListView extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Text(
                     viewModel.error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error),
                   ),
                 ),
               Expanded(
@@ -101,11 +102,12 @@ class _FileListView extends StatelessWidget {
                     final searchQuery = viewModel.searchQuery.toLowerCase();
                     final filteredFiles = searchQuery.isEmpty
                         ? files
-                        : files.where((file) =>
-                            file['fileName']
+                        : files
+                            .where((file) => file['fileName']
                                 .toString()
                                 .toLowerCase()
-                                .contains(searchQuery)).toList();
+                                .contains(searchQuery))
+                            .toList();
 
                     return ListView.builder(
                       itemCount: filteredFiles.length,
@@ -165,7 +167,8 @@ class _FileListView extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => SfPdfViewerPage(url: file['fileUrl']),
+                      builder: (context) =>
+                          SfPdfViewerPage(url: file['fileUrl']),
                     ),
                   );
                 },
@@ -211,7 +214,8 @@ class _FileListView extends StatelessWidget {
       builder: (context) {
         return AlertDialog(
           title: const Text('Delete File'),
-          content: Text('Are you sure you want to delete "${file['fileName']}"?'),
+          content:
+              Text('Are you sure you want to delete "${file['fileName']}"?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),

@@ -46,7 +46,7 @@ class ValidationViewModel extends ChangeNotifier {
 
       if (response == "OTP Verified") {
         print("OTP Verified: $response");
-        Navigator.pushReplacementNamed(context, AppRoutes.userFormView);
+        Navigator.pushReplacementNamed(context, '/user_form_view');
       } else {
         print("Invalid OTP: $response");
         _hasError = true;

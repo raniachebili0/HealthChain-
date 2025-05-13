@@ -61,7 +61,7 @@ class InscriptionViewModel extends ChangeNotifier {
         );
       } else if (response["message"] == "OTP sent successfully") {
         // Navigate if OTP is sent successfully
-        Navigator.pushReplacementNamed(context, AppRoutes.validationDuCompte);
+        Navigator.pushReplacementNamed(context, '/validation-du-compte');
         print("OTP Sent Successfully");
       } else {
         print("Failed to send OTP");

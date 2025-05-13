@@ -106,7 +106,7 @@ class InscriptionScreen extends StatelessWidget {
                               style: CustomTextStyle.h4),
                           InkWell(
                             onTap: () {
-                              Navigator.pushNamed(context, AppRoutes.login);
+                              Navigator.pushNamed(context, '/login_view');
                             },
                             child: Text(
                               'Login',

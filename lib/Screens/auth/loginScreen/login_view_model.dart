@@ -37,9 +37,9 @@ class LoginViewModel extends ChangeNotifier {
         print("ddddddddddddddddddd      ${role}");
 
         if (role == "practitioner") {
-          Navigator.pushReplacementNamed(context, AppRoutes.doctormainScreen);
+          Navigator.pushReplacementNamed(context, '/documents_screen');
         } else {
-          Navigator.pushReplacementNamed(context, AppRoutes.mainScreen);
+          Navigator.pushReplacementNamed(context, '/main_screen');
         }
       } else {
         print("Login failed: $loginStatus");
