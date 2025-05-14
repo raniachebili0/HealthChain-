@@ -26,64 +26,98 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final profileViewModel = context.watch<ProfileViewModel>();
 
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       body: SafeArea(
-        child: Padding(
-          padding:
-              EdgeInsets.only(left: 40.w, right: 40.w, top: 20.h, bottom: 70.h),
+        child: SingleChildScrollView(
           child: Column(
             children: [
-              if (profileViewModel.isLoading)
-                const Center(child: CircularProgressIndicator())
-              else if (profileViewModel.error != null)
-                Center(child: Text("Error: ${profileViewModel.error}"))
-              else if (profileViewModel.userData == null ||
-                  profileViewModel.userData!.isEmpty)
-                const Center(child: Text("No user data found"))
-              else
-                _buildUserInfo(profileViewModel.userData!),
-              Flexible(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 8,
-                        offset: const Offset(2, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      ProfileItem(
-                        text: "Wallet",
-                        imagePath: "assets/icons/bulle.png",
-                        icon: Icons.navigate_next_outlined,
-                        onTap: profileViewModel.navigateToWallet,
-                      ),
-                      ProfileItem(
-                        text: "Settings",
-                        imagePath: "assets/icons/home.png",
-                        icon: Icons.navigate_next_outlined,
-                        onTap: profileViewModel.navigateToSettings,
-                      ),
-                      ProfileItem(
-                        text: "Profile",
-                        imagePath: "assets/icons/bulle.png",
-                        icon: Icons.navigate_next_outlined,
-                        onTap: profileViewModel.navigateToProfile,
-                      ),
-                      ProfileItem(
-                        text: "LogOut",
-                        imagePath: "assets/icons/bulle.png",
-                        icon: Icons.logout,
-                        onTap: () => _showLogoutDialog(context),
-                      ),
-                    ],
-                  ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
                 ),
-              )
+                child: Column(
+                  children: [
+                    if (profileViewModel.isLoading)
+                      const Center(child: CircularProgressIndicator())
+                    else if (profileViewModel.error != null)
+                      Center(child: Text("Error: ${profileViewModel.error}"))
+                    else if (profileViewModel.userData == null ||
+                        profileViewModel.userData!.isEmpty)
+                      const Center(child: Text("No user data found"))
+                    else
+                      _buildUserInfo(profileViewModel.userData!),
+                  ],
+                ),
+              ),
+              SizedBox(height: 20.h),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: Column(
+                  children: [
+                    _buildProfileSection(
+                      title: "Account",
+                      items: [
+                        ProfileItem(
+                          text: "Edit Profile",
+                          icon: Icons.person_outline,
+                          onTap: profileViewModel.navigateToProfile,
+                          color: Colors.blue,
+                        ),
+                        ProfileItem(
+                          text: "Wallet",
+                          icon: Icons.account_balance_wallet_outlined,
+                          onTap: profileViewModel.navigateToWallet,
+                          color: Colors.green,
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20.h),
+                    _buildProfileSection(
+                      title: "Settings",
+                      items: [
+                        ProfileItem(
+                          text: "Settings",
+                          icon: Icons.settings_outlined,
+                          onTap: profileViewModel.navigateToSettings,
+                          color: Colors.orange,
+                        ),
+                        ProfileItem(
+                          text: "Notifications",
+                          icon: Icons.notifications_outlined,
+                          onTap: () {},
+                          color: Colors.purple,
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20.h),
+                    _buildProfileSection(
+                      title: "Support",
+                      items: [
+                        ProfileItem(
+                          text: "Help Center",
+                          icon: Icons.help_outline,
+                          onTap: () {},
+                          color: Colors.teal,
+                        ),
+                        ProfileItem(
+                          text: "Logout",
+                          icon: Icons.logout,
+                          onTap: () => _showLogoutDialog(context),
+                          color: Colors.red,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -91,56 +125,141 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildProfileSection({
+    required String title,
+    required List<ProfileItem> items,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.all(15.w),
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          ...items,
+        ],
+      ),
+    );
+  }
+
   Widget _buildUserInfo(Map<String, dynamic> user) {
     return Column(
-      mainAxisSize: MainAxisSize.max,
       children: [
-        ClipOval(
-          child: user['photo'] != null && user['photo'].startsWith("http")
-              ? Image.network(
-                  user['photo'],
-                  width: 100,
-                  height: 100,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Icon(
-                    Icons.person,
-                    size: 50,
-                    color: Colors.grey.shade400,
-                  ),
-                )
-              : Image.asset(
-                  'assets/images/Landing.png',
-                  width: 100,
-                  height: 100,
-                  fit: BoxFit.cover,
+        Stack(
+          children: [
+            Container(
+              width: 120.w,
+              height: 120.w,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.blue.shade100,
+                  width: 3,
                 ),
+              ),
+              child: ClipOval(
+                child: user['photo'] != null && user['photo'].startsWith("http")
+                    ? Image.network(
+                        user['photo'],
+                        width: 120.w,
+                        height: 120.w,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                          Icons.person,
+                          size: 60.w,
+                          color: Colors.grey.shade400,
+                        ),
+                      )
+                    : Image.asset(
+                        'assets/images/Landing.png',
+                        width: 120.w,
+                        height: 120.w,
+                        fit: BoxFit.cover,
+                      ),
+              ),
+            ),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                padding: EdgeInsets.all(8.w),
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: Icon(
+                  Icons.camera_alt,
+                  color: Colors.white,
+                  size: 20.w,
+                ),
+              ),
+            ),
+          ],
         ),
+        SizedBox(height: 15.h),
         Text(
           user['name'] ?? "User Name",
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: Colors.black54,
+          style: TextStyle(
+            fontSize: 24.sp,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
           ),
         ),
+        SizedBox(height: 5.h),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            Icon(
+              Icons.email_outlined,
+              size: 16.w,
+              color: Colors.grey[600],
+            ),
+            SizedBox(width: 5.w),
             Text(
               user['email'] ?? "User Email",
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.black45,
+              style: TextStyle(
+                fontSize: 16.sp,
+                color: Colors.grey[600],
               ),
+            ),
+          ],
+        ),
+        SizedBox(height: 5.h),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.phone_outlined,
+              size: 16.w,
+              color: Colors.grey[600],
             ),
             SizedBox(width: 5.w),
             Text(
               user['telecom'] ?? "User tel",
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.black45,
+              style: TextStyle(
+                fontSize: 16.sp,
+                color: Colors.grey[600],
               ),
             ),
           ],
@@ -154,14 +273,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Confirm Logout'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.logout, color: Colors.red),
+              SizedBox(width: 10.w),
+              const Text('Confirm Logout'),
+            ],
+          ),
           content: const Text('Are you sure you want to log out?'),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () async {
                 await context.read<ProfileViewModel>().logout(context);
                 if (context.mounted) {
@@ -169,7 +300,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Navigator.pushReplacementNamed(context, '/login_view');
                 }
               },
-              child: const Text('Confirm'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Logout',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -180,53 +320,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 class ProfileItem extends StatelessWidget {
   final String text;
-  final String imagePath;
   final IconData icon;
   final VoidCallback onTap;
+  final Color color;
 
   const ProfileItem({
     super.key,
     required this.text,
-    required this.imagePath,
     required this.icon,
     required this.onTap,
+    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
       child: Container(
-        height: 80.h,
-        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 15.h),
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 15.h),
         child: Row(
           children: [
             Container(
-              margin: const EdgeInsets.only(right: 15),
-              padding: const EdgeInsets.all(15),
+              padding: EdgeInsets.all(10.w),
               decoration: BoxDecoration(
-                color: const Color(0xFFE8F3F1),
-                borderRadius: BorderRadius.circular(30),
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Image.asset(
-                imagePath,
-                width: 20.w,
-                height: 20.h,
+              child: Icon(
+                icon,
+                color: color,
+                size: 24.w,
               ),
             ),
+            SizedBox(width: 15.w),
             Text(
               text,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Colors.black54,
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
               ),
             ),
             const Spacer(),
             Icon(
-              icon,
-              size: 35,
-              color: const Color(0xFF555555),
+              Icons.arrow_forward_ios,
+              size: 16.w,
+              color: Colors.grey[400],
             ),
           ],
         ),

@@ -4,6 +4,7 @@ import 'package:health_chain/services/document_service.dart';
 import 'package:health_chain/Screens/core/documents_view_model.dart';
 import 'package:health_chain/Screens/core/file_liste_screen.dart';
 import 'package:health_chain/widgets/FolderCategoryCard.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../utils/colors.dart';
 
@@ -99,6 +100,27 @@ class _DocumentsView extends StatelessWidget {
     final viewModel = context.watch<DocumentsViewModel>();
 
     return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: Text(
+          'Documents',
+          style: TextStyle(
+            color: AppColors.primaryColor,
+            fontSize: 24.sp,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.notifications_rounded),
+            color: Colors.grey[700],
+            onPressed: () {
+              Navigator.pushNamed(context, '/notification_screen');
+            },
+          ),
+          SizedBox(width: 8.w),
+        ],
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),

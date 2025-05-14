@@ -12,6 +12,7 @@ class GetionDocumentScrenn extends StatelessWidget {
     final MedicalRecordsService medicalRecordsService = MedicalRecordsService();
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8.0),

@@ -34,31 +34,6 @@ class _BottomNavBarState extends State<BottomNavBar> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              IconButton(
-                iconSize: 30,
-                icon: Icon(Icons.notifications_rounded),
-                color: Color(0xD25B5B5B),
-                onPressed: () {
-                  Navigator.pushNamed(context, '/notification_screen');
-                },
-              )
-            ]),
-          ),
-        ],
-        title: Text(
-          'HealthChain',
-          style: TextStyle(
-            color: AppColors.primaryColor,
-            fontSize: 30.sp,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ),
       bottomNavigationBar: CurvedNavigationBar(
         key: _bottomNavigationKey,
         index: 0,

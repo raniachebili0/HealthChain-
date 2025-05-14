@@ -28,6 +28,27 @@ class _HomeScreenState extends State<HomeScreen> {
     final homeViewModel = context.watch<HomeViewModel>();
 
     return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: Text(
+          'HealthChain',
+          style: TextStyle(
+            color: AppColors.primaryColor,
+            fontSize: 24.sp,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.notifications_rounded),
+            color: Colors.grey[700],
+            onPressed: () {
+              Navigator.pushNamed(context, '/notification_screen');
+            },
+          ),
+          SizedBox(width: 8.w),
+        ],
+      ),
       body: Container(
         child: SafeArea(
           child: SingleChildScrollView(

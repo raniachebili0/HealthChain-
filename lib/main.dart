@@ -169,7 +169,7 @@ class _MyAppState extends State<MyApp> {
       splitScreenMode: true,
       builder: (_, child) {
         return MaterialApp(
-          initialRoute: '/onboarding',
+          initialRoute: '/login_view',
           onGenerateRoute: AppRouter.generateRoute,
           debugShowCheckedModeBanner: false,
           title: 'First Method',
