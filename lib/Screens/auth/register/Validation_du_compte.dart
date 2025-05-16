@@ -27,103 +27,224 @@ class ValidationDuCompte extends StatelessWidget {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const CustomAppBar(appbartext: 'Sign Up'),
-            Padding(
-              padding: EdgeInsets.fromLTRB(17.w, 0.h, 17.w, 50.h),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 13.h),
-                    child: Text(
-                      'check your email account',
-                      style: CustomTextStyle.titleStyle,
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 28.h),
-                    child: Text(
-                      'On vous a envoyé un email. Entrez le code de sécurité reçu sur votre email',
-                      style: CustomTextStyle.h2,
-                    ),
-                  ),
-                  Form(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        OtpTextField(
-                          fieldWidth: 46.w,
-                          fieldHeight: 50.h,
-                          numberOfFields: 6,
-                          enabledBorderColor: validationViewModel.hasError
-                              ? AppColors.errorColor
-                              : Color(0xffD8D8D8),
-                          focusedBorderColor: validationViewModel.hasError
-                              ? AppColors.errorColor
-                              : Color(0xff0E0E0C),
-                          borderRadius: BorderRadius.circular(8.r),
-                          keyboardType: TextInputType.number,
-                          borderWidth: 1.5,
-                          textStyle: TextStyle(
-                            fontSize: 22.sp,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xff0e0e0c),
-                          ),
-                          showFieldAsBox: true,
-                          onCodeChanged: (String code) {},
-                          onSubmit: (String code) {
-                            validationViewModel.setVerificationCode(code);
-                          },
-                        ),
-                        SizedBox(height: 13.h),
-                        InkWell(
-                          onTap: () => validationViewModel.resendOtp(
-                              inscriptionViewModel.emailController.text),
-                          child: Text(
-                            "J'ai pas reçu le code",
-                            style: CustomTextStyle.lien,
-                          ),
-                        ),
-                        SizedBox(height: 270.h),
-                        MyButton(
-                          buttonFunction: () {
-                            print(
-                                "otp:" + validationViewModel.verificationCode);
-                            final validationMessage =
-                                validationViewModel.validateVerificationCode(
-                                    validationViewModel.verificationCode);
-
-                            if (validationMessage != "valide") {
-                              validationViewModel.setError(true);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(validationMessage),
-                                  backgroundColor: Colors.red,
-                                  duration: Duration(seconds: 3),
-                                ),
-                              );
-                            } else {
-                              validationViewModel.setError(false);
-                              validationViewModel.verifyOtp(
-                                context,
-                                inscriptionViewModel.emailController.text,
-                                validationViewModel.verificationCode,
-                              );
-                            }
-                          },
-                          buttonText: 'Continue',
-                        ),
-                      ],
-                    ),
-                  ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background with gradient overlay
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.blue.shade900.withOpacity(0.8),
+                  Colors.blue.shade700.withOpacity(0.9),
                 ],
               ),
             ),
-          ],
-        ),
+            child: Opacity(
+              opacity: 0.1,
+              child: Image.asset(
+                'assets/imeges/bg.jpg',
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          
+          // Content
+          SafeArea(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 20.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Back Button
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.arrow_back_ios, color: Colors.white),
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(),
+                    ),
+                    
+                    SizedBox(height: 20.h),
+                    
+                    // Header Section
+                    Center(
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 80.w,
+                            height: 80.w,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 10),
+                                ),
+                              ],
+                            ),
+                            padding: EdgeInsets.all(20.w),
+                            child: Icon(
+                              Icons.mark_email_read_outlined,
+                              size: 32.w,
+                              color: AppColors.primaryColor,
+                            ),
+                          ),
+                          SizedBox(height: 24.h),
+                          Text(
+                            'Verify Your Email',
+                            style: TextStyle(
+                              fontSize: 28.sp,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: 8.h),
+                          Text(
+                            'Enter the code sent to your email',
+                            style: TextStyle(
+                              fontSize: 16.sp,
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    SizedBox(height: 40.h),
+                    
+                    // OTP Form Container
+                    Container(
+                      padding: EdgeInsets.all(24.w),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Enter OTP',
+                            style: TextStyle(
+                              fontSize: 24.sp,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryColor,
+                            ),
+                          ),
+                          SizedBox(height: 24.h),
+                          
+                          // OTP Input Field
+                          OtpTextField(
+                            fieldWidth: 35.w,
+                            fieldHeight: 50.h,
+                            numberOfFields: 6,
+                            margin: EdgeInsets.symmetric(horizontal: 4.w),
+                            enabledBorderColor: validationViewModel.hasError
+                                ? AppColors.errorColor
+                                : Colors.grey[300]!,
+                            focusedBorderColor: validationViewModel.hasError
+                                ? AppColors.errorColor
+                                : AppColors.primaryColor,
+                            borderRadius: BorderRadius.circular(12.r),
+                            keyboardType: TextInputType.number,
+                            borderWidth: 1.5,
+                            textStyle: TextStyle(
+                              fontSize: 18.sp,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black87,
+                            ),
+                            showFieldAsBox: true,
+                            onCodeChanged: (String code) {},
+                            onSubmit: (String code) {
+                              validationViewModel.setVerificationCode(code);
+                            },
+                          ),
+                          
+                          SizedBox(height: 16.h),
+                          
+                          // Resend Code Link
+                          Center(
+                            child: TextButton(
+                              onPressed: () => validationViewModel.resendOtp(
+                                inscriptionViewModel.emailController.text,
+                              ),
+                              child: Text(
+                                "Didn't receive the code?",
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                          ),
+                          
+                          SizedBox(height: 32.h),
+                          
+                          // Verify Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50.h,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                final validationMessage = validationViewModel
+                                    .validateVerificationCode(
+                                        validationViewModel.verificationCode);
+
+                                if (validationMessage != "valide") {
+                                  validationViewModel.setError(true);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(validationMessage),
+                                      backgroundColor: Colors.red,
+                                      duration: Duration(seconds: 3),
+                                    ),
+                                  );
+                                } else {
+                                  validationViewModel.setError(false);
+                                  validationViewModel.verifyOtp(
+                                    context,
+                                    inscriptionViewModel.emailController.text,
+                                    validationViewModel.verificationCode,
+                                  );
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: Text(
+                                'Verify',
+                                style: TextStyle(
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -31,7 +31,7 @@ class AppRouter {
       case '/user_form_view':
         return MaterialPageRoute(builder: (_) => UserFormView());
       case '/profile_img_view':
-        return MaterialPageRoute(builder: (_) => ImagePickerScreen());
+        return MaterialPageRoute(builder: (_) => ProfileImgView());
       case '/documents_screen':
         return MaterialPageRoute(builder: (_) => DocumentsScreen());
       case '/notification_screen':
@@ -50,6 +50,8 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => DoctorBottomNavBar());
       case '/chat_screen':
         return MaterialPageRoute(builder: (_) => ChatScreen());
+      case '/DoctorBottomNavBar':
+        return MaterialPageRoute(builder: (_) => DoctorBottomNavBar());
       default:
         return _errorRoute("No route defined for ${settings.name}");
     }

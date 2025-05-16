@@ -37,7 +37,7 @@ class LoginViewModel extends ChangeNotifier {
         print("ddddddddddddddddddd      ${role}");
 
         if (role == "practitioner") {
-          Navigator.pushReplacementNamed(context, '/documents_screen');
+          Navigator.pushReplacementNamed(context, '/DoctorBottomNavBar');
         } else {
           Navigator.pushReplacementNamed(context, '/main_screen');
         }

@@ -18,318 +18,293 @@ class UserFormView extends StatelessWidget {
   Widget build(BuildContext context) {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
     final userFormViewModel = Provider.of<UserFormViewModel>(context);
+    
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CustomAppBar(
-              appbartext: 'Sign Up',
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background with gradient overlay
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.blue.shade900.withOpacity(0.8),
+                  Colors.blue.shade700.withOpacity(0.9),
+                ],
+              ),
             ),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(17.w, 0.h, 17.w, 30.h),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.only(bottom: 13.h),
-                        child: Text(
-                          'let\'s get to know you',
-                          style: CustomTextStyle.titleStyle,
-                        ),
+            child: Opacity(
+              opacity: 0.1,
+              child: Image.asset(
+                'assets/imeges/bg.jpg',
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          
+          // Content
+          SafeArea(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 20.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Back Button
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.arrow_back_ios, color: Colors.white),
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(),
+                    ),
+                    
+                    SizedBox(height: 20.h),
+                    
+                    // Header Section
+                    Center(
+                      child: Column(
+                        children: [
+                          Text(
+                            'Complete Your Profile',
+                            style: TextStyle(
+                              fontSize: 28.sp,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: 8.h),
+                          Text(
+                            'Tell us more about yourself',
+                            style: TextStyle(
+                              fontSize: 16.sp,
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                          ),
+                        ],
                       ),
-                      Padding(
-                        padding: EdgeInsets.only(bottom: 20.h),
-                        child: Text(
-                          'enter your information',
-                          style: CustomTextStyle.h2,
-                        ),
+                    ),
+                    
+                    SizedBox(height: 40.h),
+                    
+                    // Form Container
+                    Container(
+                      padding: EdgeInsets.all(24.w),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
                       ),
-                      Form(
+                      child: Form(
                         key: formKey,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Padding(
-                              padding: EdgeInsets.only(bottom: 8.h),
-                              child: OutlineBorderTextFormField(
-                                labelText: "tel",
-                                obscureText: false,
-                                tempTextEditingController:
-                                    userFormViewModel.telController,
-                                keyboardType: TextInputType.number,
-                                textInputAction: TextInputAction.next,
-                                validation: (textToValidate) {
-                                  return userFormViewModel
-                                      .getTempAccountValidationtel(
-                                          textToValidate);
-                                },
-                                mySuffixIcon: null,
-                              ),
+                            // Full Name Field
+                            OutlineBorderTextFormField(
+                              labelText: "Full Name",
+                              obscureText: false,
+                              tempTextEditingController: userFormViewModel.nomController,
+                              keyboardType: TextInputType.text,
+                              textInputAction: TextInputAction.next,
+                              validation: (textToValidate) {
+                                return userFormViewModel.getTempAccountValidationname(textToValidate);
+                              },
+                              mySuffixIcon: null,
                             ),
-                            Padding(
-                              padding: EdgeInsets.only(bottom: 8.h),
-                              child: OutlineBorderTextFormField(
-                                labelText: "Full Nom",
-                                obscureText: false,
-                                tempTextEditingController:
-                                    userFormViewModel.nomController,
-                                keyboardType: TextInputType.text,
-                                textInputAction: TextInputAction.next,
-                                validation: (textToValidate) {
-                                  return userFormViewModel
-                                      .getTempAccountValidationname(
-                                          textToValidate);
-                                },
-                                mySuffixIcon: null,
-                              ),
+                            SizedBox(height: 16.h),
+                            
+                            // Phone Number Field
+                            OutlineBorderTextFormField(
+                              labelText: "Phone Number",
+                              obscureText: false,
+                              tempTextEditingController: userFormViewModel.telController,
+                              keyboardType: TextInputType.number,
+                              textInputAction: TextInputAction.next,
+                              validation: (textToValidate) {
+                                return userFormViewModel.getTempAccountValidationtel(textToValidate);
+                              },
+                              mySuffixIcon: null,
                             ),
-                            Padding(
-                              padding: EdgeInsets.only(bottom: 5.h),
-                              child: OutlineBorderTextFormField(
-                                labelText: "Mot de passe",
-                                obscureText: userFormViewModel.isPassVisible,
-                                tempTextEditingController:
-                                    userFormViewModel.mdpController,
-                                keyboardType: TextInputType.text,
-                                textInputAction: TextInputAction.next,
-                                validation: (textToValidate) {
-                                  return userFormViewModel
-                                      .getTempAccountValidationmdp(
-                                          textToValidate);
-                                },
-                                mySuffixIcon: Container(
-                                  child: InkWell(
-                                    onTap: userFormViewModel
-                                        .togglePasswordVisibility,
-                                    child: Image(
-                                      image: userFormViewModel.isPassVisible
-                                          ? AssetImage(
-                                              'assets/icons/vector.png')
-                                          : AssetImage(
-                                              'assets/icons/union.png'),
-                                      height: 20,
-                                      width: 20,
-                                    ),
+                            SizedBox(height: 16.h),
+                            
+                            // Password Field
+                            OutlineBorderTextFormField(
+                              labelText: "Password",
+                              obscureText: userFormViewModel.isPassVisible,
+                              tempTextEditingController: userFormViewModel.mdpController,
+                              keyboardType: TextInputType.text,
+                              textInputAction: TextInputAction.next,
+                              validation: (textToValidate) {
+                                return userFormViewModel.getTempAccountValidationmdp(textToValidate);
+                              },
+                              mySuffixIcon: Container(
+                                child: InkWell(
+                                  onTap: userFormViewModel.togglePasswordVisibility,
+                                  child: Icon(
+                                    userFormViewModel.isPassVisible
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                    color: Colors.grey[600],
                                   ),
                                 ),
                               ),
                             ),
+                            
+                            // Password Requirements
                             Padding(
-                              padding: EdgeInsets.only(bottom: 10.h),
+                              padding: EdgeInsets.only(top: 8.h, bottom: 16.h),
                               child: Text(
-                                'At least 8 characters that contain an uppercase letter, a number and a special character',
+                                'Password must contain at least 8 characters, including uppercase, number and special character',
                                 style: TextStyle(
                                   fontSize: 12.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xb30e0e0c),
+                                  color: Colors.grey[600],
                                 ),
                               ),
                             ),
-                            Padding(
-                              padding: EdgeInsets.only(bottom: 8.h),
-                              child: Row(
-                                children: [
-                                  Padding(
-                                    padding: EdgeInsets.only(right: 50.w),
+                            
+                            // Date of Birth Field
+                            Text(
+                              'Date of Birth',
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            SizedBox(height: 8.h),
+                            DateFormatField(
+                              type: DateFormatType.type4,
+                              addCalendar: true,
+                              controller: userFormViewModel.dateController,
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.grey[100],
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16.w,
+                                  vertical: 12.h,
+                                ),
+                              ),
+                              onComplete: (date) {
+                                userFormViewModel.date = date;
+                              },
+                            ),
+                            SizedBox(height: 24.h),
+                            
+                            // Gender Selection
+                            Text(
+                              'Gender',
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            SizedBox(height: 12.h),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () => userFormViewModel.selectGender("male"),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: userFormViewModel.masculinColor,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      elevation: 0,
+                                      padding: EdgeInsets.symmetric(vertical: 12.h),
+                                    ),
                                     child: Text(
-                                      'Birthday',
+                                      'Male',
                                       style: TextStyle(
-                                        fontSize: 20.sp,
+                                        color: userFormViewModel.selectedGender == "male"
+                                            ? Colors.white
+                                            : Colors.black87,
+                                        fontSize: 16.sp,
                                         fontWeight: FontWeight.w500,
-                                        color: Color(0xb30e0e0c),
                                       ),
                                     ),
                                   ),
-                                  Expanded(
-                                    child: DateFormatField(
-                                      type: DateFormatType.type4,
-                                      addCalendar: true,
-                                      controller:
-                                          userFormViewModel.dateController,
-                                      decoration: InputDecoration(
-                                        iconColor: Colors.white,
-                                        floatingLabelBehavior:
-                                            FloatingLabelBehavior.never,
-                                        filled: true,
-                                        fillColor: AppColors.primaryColor,
-                                        labelText: "Date",
-                                        labelStyle: const TextStyle(
-                                          fontSize: 18,
-                                          fontStyle: FontStyle.italic,
-                                          color: Colors.white,
-                                        ),
-                                        border: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(30),
-                                          borderSide: const BorderSide(
-                                            color: AppColors.primaryColor,
-                                            width: 1.5,
-                                          ),
-                                        ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(30),
-                                          borderSide: const BorderSide(
-                                            color: AppColors.primaryColor,
-                                            width: 1.5,
-                                          ),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(30),
-                                          borderSide: const BorderSide(
-                                            color: AppColors.primaryColor,
-                                            width: 2,
-                                          ),
-                                        ),
-                                        contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 20,
-                                          vertical: 16,
-                                        ),
+                                ),
+                                SizedBox(width: 16.w),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () => userFormViewModel.selectGender("female"),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: userFormViewModel.femininColor,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
-                                      onComplete: (date) {
-                                        userFormViewModel.date = date;
-                                      },
+                                      elevation: 0,
+                                      padding: EdgeInsets.symmetric(vertical: 12.h),
+                                    ),
+                                    child: Text(
+                                      'Female',
+                                      style: TextStyle(
+                                        color: userFormViewModel.selectedGender == "female"
+                                            ? Colors.white
+                                            : Colors.black87,
+                                        fontSize: 16.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            Padding(
-                              padding: EdgeInsets.only(bottom: 10.h),
-                              child: Text(
-                                'Gender',
-                                style: TextStyle(
-                                  fontSize: 20.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xb30e0e0c),
+                            
+                            SizedBox(height: 32.h),
+                            
+                            // Continue Button
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50.h,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  if (formKey.currentState!.validate()) {
+                                    Navigator.pushNamed(context, '/profile_img_view');
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primaryColor,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: Text(
+                                  'Continue',
+                                  style: TextStyle(
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Center(
-                              child: Column(
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: <Widget>[
-                                      ElevatedButton(
-                                        onPressed: () {
-                                          userFormViewModel
-                                              .selectGender("male");
-                                        },
-                                        style: ButtonStyle(
-                                          elevation:
-                                              WidgetStateProperty.all<double>(
-                                                  0),
-                                          minimumSize: WidgetStateProperty.all(
-                                              Size(130.w, 53.h)),
-                                          shape: WidgetStateProperty.all<
-                                              RoundedRectangleBorder>(
-                                            RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(30.r),
-                                            ),
-                                          ),
-                                          backgroundColor:
-                                              WidgetStateProperty.all<Color>(
-                                                  userFormViewModel
-                                                      .masculinColor),
-                                        ),
-                                        child: Text(
-                                          'Masculine',
-                                          style: TextStyle(
-                                            color: userFormViewModel
-                                                        .selectedGender ==
-                                                    "Masculine"
-                                                ? Colors.white
-                                                : Colors.black,
-                                            fontFamily: 'Roboto',
-                                            fontSize: 16.sp,
-                                            fontWeight: FontWeight.w500,
-                                            height: 1.2575.sign,
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(width: 20.w),
-                                      ElevatedButton(
-                                        onPressed: () {
-                                          userFormViewModel
-                                              .selectGender("female");
-                                        },
-                                        style: ButtonStyle(
-                                          elevation:
-                                              WidgetStateProperty.all<double>(
-                                                  0),
-                                          minimumSize: WidgetStateProperty.all(
-                                              Size(130.w, 53.h)),
-                                          shape: WidgetStateProperty.all<
-                                              RoundedRectangleBorder>(
-                                            RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(30.r),
-                                            ),
-                                          ),
-                                          backgroundColor:
-                                              WidgetStateProperty.all<Color>(
-                                                  userFormViewModel
-                                                      .femininColor),
-                                        ),
-                                        child: Text(
-                                          'Female',
-                                          style: TextStyle(
-                                            color: userFormViewModel
-                                                        .selectedGender ==
-                                                    "Female"
-                                                ? Colors.white
-                                                : Colors.black,
-                                            fontFamily: 'Roboto',
-                                            fontSize: 16.sp,
-                                            fontWeight: FontWeight.w500,
-                                            height: 1.2575.sign,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Visibility(
-                                      visible: userFormViewModel
-                                              .selectedGender.isEmpty
-                                          ? true
-                                          : false,
-                                      child: Container(
-                                          padding: EdgeInsets.only(
-                                              left: 15.0, top: 2.0),
-                                          child: Text(
-                                            "",
-                                          ))),
-                                ],
-                              ),
-                            ),
-                            SizedBox(
-                              height: 20.h,
-                            ),
-                            MyButton(
-                              buttonFunction: () => userFormViewModel
-                                  .buttonAction(formKey, context),
-                              buttonText: 'Continuer',
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
