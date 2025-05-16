@@ -241,13 +241,43 @@ class _FileListView extends StatelessWidget {
 class SfPdfViewerPage extends StatelessWidget {
   final String url;
 
-  const SfPdfViewerPage({Key? key, required this.url}) : super(key: key);
+  const SfPdfViewerPage({super.key, required this.url});
+
+  bool isImageFile(String path) {
+    final mimeType = lookupMimeType(path);
+    return mimeType != null && mimeType.startsWith('image/');
+  }
+
+  bool isPdfFile(String path) {
+    final mimeType = lookupMimeType(path);
+    return mimeType != null && mimeType == 'application/pdf';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isImage = isImageFile(url);
+    final isPdf = isPdfFile(url);
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Preview")),
-      body: SfPdfViewer.network(url),
+      appBar: AppBar(title: Text("Preview")),
+      body: isPdf
+          ? SfPdfViewer.network(url)
+          : isImage
+              ? InteractiveViewer(
+                  child: Center(
+                    child: Image.network(
+                      url,
+                      errorBuilder: (context, error, stackTrace) =>
+                          Text("Failed to load image"),
+                    ),
+                  ),
+                )
+              : Center(
+                  child: Text(
+                    "Unsupported file format.",
+                    style: TextStyle(fontSize: 18, color: Colors.red),
+                  ),
+                ),
     );
   }
 }
