@@ -1,9 +1,22 @@
 # health_chain
 
 A new Flutter project.
+Key highlights:
+
+Secure storage of all your medical documents on Microsoft Azure Cloud, ensuring safety and reliability.
+
+Smart file validation with RoboFlow’s AI — only accurate and relevant files get uploaded.
+
+AI-powered chatbot assistant available 24/7 to guide you through appointments and answer health questions.
+
+A responsive, user-friendly interface designed for seamless experience on any device.
+
+Built with clean architecture for easy maintenance and future scalability.
 
 ## Screenshots
-
+![Capture d’écran 2025-05-18 205041](https://github.com/user-attachments/assets/3b9f4a35-c72b-4077-9cd0-af8ff8cc8276)
+![Capture d’écran 2025-05-18 204956](https://github.com/user-attachments/assets/26273206-d34e-4e3f-8d55-c805379a45b9)
+![Capture d’écran 2025-05-18 205013](https://github.com/user-attachments/assets/b73cd3c9-7c29-4aa2-8c38-d2323f3991e0)
 ![Capture d’écran 2025-05-16 011734](https://github.com/user-attachments/assets/aaa8f540-89b1-42c2-a034-d0edaaaa2855)
 ![Capture d’écran 2025-05-16 011928](https://github.com/user-attachments/assets/81dc76a8-0c15-4f2d-a3b9-2ef293bcde72)
 ![Capture d’écran 2025-05-16 013204](https://github.com/user-attachments/assets/af147182-a61c-4706-9964-1896a07b050c)
